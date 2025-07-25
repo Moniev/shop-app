@@ -9,7 +9,6 @@ module Api
     # clearing the user's shopping cart. The cart is defined as a collection of `Item`
     # records associated with the current user that are not yet part of an `Order`.
     class CartController < ApplicationController
-      before_action :authenticate_user!
       authorize_resource class: false
 
       # GET /api/v1/cart

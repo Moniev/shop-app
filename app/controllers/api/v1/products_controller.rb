@@ -13,7 +13,7 @@ module Api
     # Provides endpoints to list, show, create, update, and delete products,
     # as well as actions for liking, rating, and commenting.
     class ProductsController < ApplicationController
-      before_action :authenticate_user!, except: %i[index show]
+      skip_before_action :authenticate_user!, only: %i[index show]
       load_and_authorize_resource except: %i[index show create]
 
       # GET /api/v1/products

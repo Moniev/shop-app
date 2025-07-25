@@ -9,7 +9,6 @@ module Api
     # It integrates with the Payment model, which handles interaction with the
     # Stripe payment gateway. Access is restricted based on user ownership and roles.
     class PaymentsController < ApplicationController
-      before_action :authenticate_user!
       load_and_authorize_resource except: [:create]
 
       # GET /api/v1/payments

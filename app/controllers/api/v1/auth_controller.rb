@@ -10,6 +10,8 @@ module Api
     # Provides endpoints for login, two-factor authentication (2FA), account
     # activation, and password reset. Responses are rendered using Jbuilder templates.
     class AuthController < ApplicationController
+      skip_before_action :authenticate_user!
+
       # POST /api/v1/auth/login
       #
       # Authenticates a user based on email and password.

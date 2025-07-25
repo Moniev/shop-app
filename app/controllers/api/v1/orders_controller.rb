@@ -10,7 +10,6 @@ module Api
     # creating from a cart, viewing details, and modifying status.
     # It enforces authentication and role-based authorization for secure access.
     class OrdersController < ApplicationController
-      before_action :authenticate_user!
       load_and_authorize_resource except: %i[me create]
 
       # GET /api/v1/orders

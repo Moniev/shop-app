@@ -8,6 +8,8 @@ module Api
     # This controller provides readiness, health, and metrics endpoints, commonly
     # used by orchestration systems like Kubernetes to manage the application lifecycle.
     class DiagnosticsController < ApplicationController
+      skip_before_action :authenticate_user!
+
       # GET /api/v1/diagnostics/readiness
       #
       # Checks if the application is ready to accept traffic.

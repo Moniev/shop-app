@@ -31,6 +31,24 @@ class Order < ApplicationRecord
     end
   end
 
+  def self.create_from_cart_for(user)
+    cart_items = user.cart_items.includes(:product)
+
+    return { order: nil, errors: ['Your cart is empty'] } if cart_items.empty?
+
+    order = nil
+    transaction do
+      order = user.orders.create!
+      cart_items.update_all(order_id: order.id, user_id: nil)
+
+      order.save!
+    end
+
+    { order: order, errors: [] }
+  rescue ActiveRecord::RecordInvalid => e
+    { order: nil, errors: [e.message] }
+  end
+
   def total_items_count
     items.sum(:quantity)
   end
@@ -50,6 +68,6 @@ class Order < ApplicationRecord
   end
 
   def calculate_total_amount
-    self.total_amount = items.reload.sum { |item| item.price_at_purchase.to_f * item.quantity.to_i }
+    self.total_amount = items.reload.sum('items.price_at_purchase * items.quantity')
   end
 end

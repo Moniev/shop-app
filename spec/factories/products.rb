@@ -2,7 +2,7 @@
 
 FactoryBot.define do
   factory :product do
-    name { "Test Product #{SecureRandom.hex(4)}" }
+    sequence(:name) { |n| "Test Product #{n}" }
     price { Faker::Commerce.price(range: 10..1000.0) }
     description { Faker::Lorem.sentence }
   end

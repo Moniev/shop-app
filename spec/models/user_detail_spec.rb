@@ -42,7 +42,6 @@ RSpec.describe UserDetail, type: :model do
 
   describe '#update_location' do
     let(:user_detail) { create(:user_detail, name: 'Test User Name') }
-    # POPRAWKA: Dodano `province`, aby spełnić walidację modelu Location
     let(:valid_location_params) do
       { city: 'Warsaw', country: 'Poland', province: 'Masovian', street: 'Main St', postal_code: '00-001' }
     end
@@ -50,14 +49,12 @@ RSpec.describe UserDetail, type: :model do
 
     context 'when user detail does not have a location' do
       it 'creates a new location' do
-        # Zakładamy, że Location ma walidacje, więc przekazujemy kompletne dane
         expect { user_detail.update_location(valid_location_params) }.to change(Location, :count).by(1)
         expect(user_detail.locations.first.city).to eq('Warsaw')
       end
     end
 
     context 'when user detail already has a location' do
-      # POPRAWKA: Dodano `province`, aby spełnić walidację modelu Location
       let!(:location) do
         user_detail.locations.create!(city: 'Krakow', country: 'Poland', province: 'Lesser Poland', street: 'Florianska',
                                       postal_code: '31-019')
@@ -98,7 +95,6 @@ RSpec.describe UserDetail, type: :model do
     end
 
     context 'when user detail already has entrepreneur details' do
-      # POPRAWKA: Tworzymy obiekt przez asocjację, aby uniknąć błędu braku fabryki
       let!(:entrepreneur_detail) { user_detail.create_entrepreneur_detail!(business_name: 'Old Biz') }
 
       it 'updates the existing entrepreneur details' do

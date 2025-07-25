@@ -47,6 +47,20 @@ RSpec.describe User, type: :model do
     end
   end
 
+  describe '#create_reset_code!' do
+    let(:user) { create(:user) }
+    let(:code) { 'RESET123' }
+
+    it 'creates a reset code for the user' do
+      expect { user.create_reset_code!(code: code, expires_in_minutes: 15) }.to change(ResetCode, :count).by(1)
+
+      reset_code = user.reload.reset_code
+      expect(reset_code).to be_present
+      expect(reset_code.code).to eq(code)
+      expect(reset_code.expires_at).to be_within(1.minute).of(15.minutes.from_now)
+    end
+  end
+
   describe '#accessible_by?' do
     let(:user) { create(:user, role: :regular) }
     let(:another_user) { create(:user, role: :regular) }
@@ -115,6 +129,17 @@ RSpec.describe User, type: :model do
       regular_user = build(:user, role: :regular)
       expect(regular_user.regular?).to be true
       expect(regular_user.admin?).to be false
+    end
+
+    it 'returns true for #moderator? when user is a moderator' do
+      moderator_user = build(:user, role: :moderator)
+      expect(moderator_user.moderator?).to be true
+      expect(moderator_user.regular?).to be false
+    end
+
+    it 'aliases #user? to #regular?' do
+      regular_user = build(:user, role: :regular)
+      expect(regular_user.user?).to be true
     end
   end
 end

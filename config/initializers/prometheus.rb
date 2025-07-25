@@ -1,4 +1,3 @@
-# config/initializers/prometheus.rb
 # frozen_string_literal: true
 
 require 'prometheus/client'

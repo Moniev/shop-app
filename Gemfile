@@ -14,16 +14,16 @@ gem 'twilio-ruby'
 gem 'bcrypt', '~> 3.1.7'
 
 gem 'bootsnap', require: false
+gem 'kamal', require: false
 gem 'prometheus-client'
+gem 'rack-attack'
 gem 'rails-observers'
+gem 'secure_headers'
 gem 'solid_cable'
 gem 'solid_cache'
 gem 'solid_queue'
-gem 'tzinfo-data', platforms: %i[windows jruby]
-
-gem 'kamal', require: false
-
 gem 'thruster', require: false
+gem 'tzinfo-data', platforms: %i[windows jruby]
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem

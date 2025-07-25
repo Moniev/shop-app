@@ -1,3 +1,4 @@
+# config/application.rb
 require_relative 'boot'
 
 require 'rails/all'
@@ -11,9 +12,6 @@ Bundler.require(*Rails.groups)
 module ShopOnRails
   class Application < Rails::Application
     config.active_record.observers = :order_observer, :user_observer, :product_observer, :cart_observer
-
-    config.autoload_paths += %W[#{config.root}/app/models/services]
-    config.eager_load_paths += %W[#{config.root}/app/models/services]
 
     config.load_defaults 8.0
     config.autoload_lib(ignore: %w[assets tasks])

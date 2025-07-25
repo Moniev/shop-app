@@ -10,7 +10,7 @@ module Api
     # records associated with the current user that are not yet part of an `Order`.
     class CartController < ApplicationController
       before_action :authenticate_user!
-      authorize_resource class: false # Assuming authorize_resource is from CanCanCan or similar
+      authorize_resource class: false
 
       # GET /api/v1/cart
       #
@@ -104,7 +104,6 @@ module Api
       # Strong parameters for the 'revoke' action.
       #
       # @return [ActionController::Parameters] Permitted parameters.
-
       def revoke_params
         params.permit(:quantity_to_remove)
       end

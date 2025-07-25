@@ -4,7 +4,7 @@ class CartObserver < ApplicationObserver
   observe :item
 
   def after_create(cart_item)
-    Rails.logger.info "CartObserver: Item added to cart (User: #{cart_item.user.id}, Product: #{cart_item.product.name})"
+    Rails.logger.info "CartObserver: Item added to cart (User: #{cart_item.user.id}, Product: #{cart_item.product.name}, User: #{cart_item.user.id})"
   end
 
   def after_update(cart_item)

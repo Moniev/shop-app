@@ -9,8 +9,6 @@ module Api
     # from Stripe, such as charge successes, failures, or refunds. It is responsible
     # for verifying the authenticity of these webhooks before processing them.
     class StripePaymentsWebhookController < ApplicationController
-      skip_before_action :verify_authenticity_token # Webhooks don't use CSRF tokens
-
       # POST /api/v1/stripe_payments_webhook/handle
       #
       # Receives and processes a webhook event from Stripe.

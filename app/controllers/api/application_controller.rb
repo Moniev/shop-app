@@ -8,12 +8,22 @@ module Api
   # Provides shared functionality for all API controllers, including authentication,
   # authorization, global exception handling, and setting the default response format.
   class ApplicationController < ActionController::API
+    around_action :measure_execution_time
     before_action :set_default_response_format
     before_action :authenticate_user!
 
     class Unauthorized < StandardError; end
     class Forbidden < StandardError; end
     class BadRequest < StandardError; end
+
+    def measure_execution_time
+      start_time = Time.now
+      yield
+      end_time = Time.now
+
+      duration = end_time - start_time
+      Rails.logger.info "Action #{action_name} from controller #{controller_name} took #{duration.round(2)} seconds."
+    end
 
     rescue_from ActiveRecord::RecordNotFound do |exception|
       Rails.logger.warn "RecordNotFound: #{exception.message}"

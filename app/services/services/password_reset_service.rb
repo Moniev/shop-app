@@ -24,7 +24,7 @@ module Services
           user.create_reset_code!(code: code, expires_at: expires_at)
         end
 
-        Mailers::UserMailer.dial_reset_code(user, code).deliver_later
+        UserMailer.dial_reset_code(user, code).deliver_later
       end
 
       Services::Result.new(

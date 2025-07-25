@@ -24,7 +24,13 @@ module Api
       # @see Services::UserCreationService.call
       def create
         result = Services::UserCreationService.call(user_params)
-        @user = result.data[:user]
+
+        @user = if result.success?
+                  result.data[:user]
+                else
+                  nil
+                end
+
         bind_data(result)
       end
 
@@ -179,7 +185,7 @@ module Api
       def user_params
         params.require(:user).permit(
           :mail, :password, :password_confirmation, :phone,
-          user_detail_attributes: %i[first_name last_name]
+          user_detail_attributes: %i[name first_name last_name]
         )
       end
 

@@ -10,6 +10,24 @@
 module Services
   class UserCreationService
     def self.call(user_params)
+      if User.exists?(mail: user_params[:mail])
+        return Services::Result.new(
+          success?: false,
+          errors: ['User with this email already exists.'],
+          status: :conflict,
+          message: 'User registration failed.'
+        )
+      end
+
+      if User.exists?(phone: user_params[:phone])
+        return Services::Result.new(
+          success?: false,
+          errors: ['User with this phone number already exists.'],
+          status: :conflict,
+          message: 'User registration failed.'
+        )
+      end
+
       user = User.new(user_params)
       begin
         ActiveRecord::Base.transaction do

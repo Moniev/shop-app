@@ -1,0 +1,2 @@
+class ResetCodeObserver < ApplicationObserver
+end

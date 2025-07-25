@@ -18,7 +18,7 @@ module Services
       user = User.find_by(mail: email)
 
       unless user&.authenticate(password)
-        return Services::Result.new(
+        return Result.new(
           success?: false,
           errors: ['Invalid email or password.'],
           status: :unauthorized,
@@ -28,7 +28,7 @@ module Services
 
       if user.two_factor_enabled?
         send_2fa_code(user)
-        Services::Result.new(
+        Result.new(
           success?: true,
           message: 'Two-factor authentication code sent. Please verify.',
           status: :accepted,
@@ -37,7 +37,7 @@ module Services
       else
         token_result = BearerService.encode({ user_id: user.id })
         if token_result.success?
-          Services::Result.new(
+          Result.new(
             success?: true,
             data: { token: token_result.data[:token] },
             status: :ok,
@@ -49,7 +49,7 @@ module Services
       end
     rescue StandardError => e
       Rails.logger.error("Login process failed for email #{email}: #{e.message}")
-      Services::Result.new(
+      Result.new(
         success?: false,
         errors: ['An unexpected error occurred during login.'],
         status: :internal_server_error,
@@ -75,11 +75,11 @@ module Services
       redis_key = "user:#{user.id}:2fa_code"
 
       begin
-        if Services::BearerService.redis.get(redis_key) == code
-          Services::BearerService.redis.del(redis_key)
+        if BearerService.redis.get(redis_key) == code
+          BearerService.redis.del(redis_key)
           user.second_factor_code&.destroy
-          token_result = Services::BearerService.encode({ user_id: user.id })
-          return Services::Result.new(
+          token_result = BearerService.encode({ user_id: user.id })
+          return Result.new(
             success?: true,
             data: { token: token_result.data[:token] },
             status: :ok,
@@ -92,8 +92,8 @@ module Services
 
       if user.second_factor_code&.code == code
         user.second_factor_code.destroy
-        token_result = Services::BearerService.encode({ user_id: user.id })
-        return Services::Result.new(
+        token_result = BearerService.encode({ user_id: user.id })
+        return Result.new(
           success?: true,
           data: { token: token_result.data[:token] },
           status: :ok,
@@ -101,7 +101,7 @@ module Services
         )
       end
 
-      Services::Result.new(
+      Result.new(
         success?: false,
         errors: ['Invalid 2FA code.'],
         status: :unauthorized,
@@ -109,7 +109,7 @@ module Services
       )
     rescue StandardError => e
       Rails.logger.error("2FA verification process failed for user #{user.id}: #{e.message}")
-      Services::Result.new(
+      Result.new(
         success?: false,
         errors: ['An unexpected error occurred during 2FA verification.'],
         status: :internal_server_error,
@@ -123,7 +123,7 @@ module Services
     # @param token [String] The JWT token to blacklist.
     # @return [Services::Result] A Result object indicating success or failure of token blacklisting.
     def self.blacklist_token(token)
-      Services::BearerService.blacklist!(token)
+      BearerService.blacklist!(token)
     end
 
     private
@@ -137,7 +137,7 @@ module Services
       expires_at = 15.minutes.from_now
 
       begin
-        Services::BearerService.redis.set(redis_key, code, ex: 15.minutes.to_i)
+        BearerService.redis.set(redis_key, code, ex: 15.minutes.to_i)
       rescue Redis::CannotConnectError => e
         Rails.logger.error("Redis error during 2FA code send for user #{user.id}: #{e.message}. Falling back to DB.")
         user.second_factor_code&.destroy
@@ -149,7 +149,7 @@ module Services
       if user.phone.present?
         SMSService.dial_2fa_code(user, code)
       else
-        Mailers::UserMailer.dial_2fa_code(user, code).deliver_later
+        UserMailer.dial_2fa_code(user, code).deliver_later
       end
     end
   end

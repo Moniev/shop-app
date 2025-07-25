@@ -1,0 +1,2 @@
+class ActivationCodeObserver < ApplicationObserver
+end

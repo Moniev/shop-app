@@ -125,8 +125,8 @@ module Api
     # @param result [Services::Result] The result object from a service call.
     # @return [void]
     def bind_data(result)
-      @message = result.message
-      @errors = result.errors
+      @message ||= result.message
+      @errors ||= result.errors
       @status = result.status
       response.status = @status
     end

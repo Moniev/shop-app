@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class User < ApplicationRecord
-  enum :role, %w[regular moderator admin]
+  enum :role, %w[regular moderator admin], default: :regular
   alias user? regular?
   has_secure_password
 
@@ -23,11 +23,34 @@ class User < ApplicationRecord
   validates :phone, uniqueness: true, allow_nil: true
   validates :password_digest, presence: true
 
+  def create_activation_code!(code:, expires_in_hours: 24)
+    activation_code = ActivationCode.new(user: self, code: code, expires_at: expires_in_hours.hours.from_now)
+    activation_code.save!
+  end
+
+  def create_reset_code!(code:, expires_in_minutes: 15)
+    reset_code = ResetCode.new(user: self, code: code, expires_at: expires_in_minutes.minutes.from_now)
+    reset_code.save!
+  end
+
+  def create_verification_code!(code:, expires_in_minutes: 15)
+    reset_code = VerificationCode.new(user: self, code: code, expires_at: expires_in_minutes.minutes.from_now)
+    reset_code.save!
+  end
+
   def accessible_by?(other_user)
     other_user&.admin? || id == other_user&.id
   end
 
   def two_factor_enabled?
     user_settings&.two_factor_enabled
+  end
+
+  def admin?
+    role == 'admin'
+  end
+
+  def moderator?
+    role == 'moderator'
   end
 end

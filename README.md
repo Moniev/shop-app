@@ -173,6 +173,4 @@ The request specs in the `spec/requests` directory also serve as the definitions
 
 ## License
 © 2025 Robert Moń, Kacper Majda All Rights Reserved.
-
 Use this stuff whenever you want for non-commercial purposes.
-Build on, your, own, risk.

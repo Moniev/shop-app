@@ -28,6 +28,7 @@ module Services
         if user.activation_code&.code == code && user.activation_code.expires_at.future?
           user.update!(active: true)
           user.activation_code.destroy!
+          user.create_verification_code!(code: SecureRandom.hex(16))
           Services::Result.new(
             success?: true,
             data: { user: user },

@@ -10,9 +10,19 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_06_26_205336) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_23_114315) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "activation_codes", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "code", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_activation_codes_on_code", unique: true
+    t.index ["user_id"], name: "index_activation_codes_on_user_id"
+  end
 
   create_table "active_storage_attachments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "name", null: false
@@ -42,6 +52,102 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_26_205336) do
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
   end
 
+  create_table "blacklisted_tokens", force: :cascade do |t|
+    t.string "token", null: false
+    t.bigint "owner_id", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["expires_at"], name: "index_blacklisted_tokens_on_expires_at"
+    t.index ["owner_id"], name: "index_blacklisted_tokens_on_owner_id"
+    t.index ["token"], name: "index_blacklisted_tokens_on_token", unique: true
+  end
+
+  create_table "comments", force: :cascade do |t|
+    t.uuid "product_id", null: false
+    t.bigint "user_id", null: false
+    t.text "content", null: false
+    t.bigint "parent_id"
+    t.integer "replies_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["parent_id"], name: "index_comments_on_parent_id"
+    t.index ["product_id"], name: "index_comments_on_product_id"
+    t.index ["user_id"], name: "index_comments_on_user_id"
+  end
+
+  create_table "entrepreneur_details", force: :cascade do |t|
+    t.bigint "user_detail_id", null: false
+    t.string "business_name"
+    t.string "nip"
+    t.string "krs"
+    t.text "description"
+    t.text "offer"
+    t.float "income"
+    t.float "costs"
+    t.float "funding_capital"
+    t.string "industry"
+    t.jsonb "management_council_members"
+    t.jsonb "decision_makers"
+    t.string "business_phone_number"
+    t.string "business_mail"
+    t.string "website_address"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["krs"], name: "index_entrepreneur_details_on_krs", unique: true
+    t.index ["nip"], name: "index_entrepreneur_details_on_nip", unique: true
+    t.index ["user_detail_id"], name: "index_entrepreneur_details_on_user_detail_id", unique: true
+  end
+
+  create_table "items", force: :cascade do |t|
+    t.bigint "order_id"
+    t.bigint "user_id"
+    t.uuid "product_id", null: false
+    t.integer "quantity", default: 1, null: false
+    t.decimal "price_at_purchase", precision: 10, scale: 2, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["order_id"], name: "index_items_on_order_id"
+    t.index ["product_id"], name: "index_items_on_product_id"
+    t.index ["user_id"], name: "index_items_on_user_id"
+  end
+
+  create_table "locations", force: :cascade do |t|
+    t.bigint "user_detail_id", null: false
+    t.string "country", null: false
+    t.string "province", null: false
+    t.string "city", null: false
+    t.string "postal_code", null: false
+    t.string "street"
+    t.integer "building_number"
+    t.integer "apartment_number"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_detail_id"], name: "index_locations_on_user_detail_id"
+  end
+
+  create_table "orders", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.decimal "total_amount", precision: 10, scale: 2, default: "0.0"
+    t.integer "status", default: 0
+    t.integer "payment_status", default: 0
+    t.datetime "order_date", null: false
+    t.text "delivery_address"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_orders_on_user_id"
+  end
+
+  create_table "payments", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "product_likes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "product_photos", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "product_id"
     t.datetime "created_at", null: false
@@ -49,15 +155,119 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_26_205336) do
     t.index ["product_id"], name: "index_product_photos_on_product_id"
   end
 
+  create_table "product_rates", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.uuid "product_id", null: false
+    t.integer "rating", null: false
+    t.text "comment"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["product_id"], name: "index_product_rates_on_product_id"
+    t.index ["user_id", "product_id"], name: "index_product_rates_on_user_id_and_product_id", unique: true
+    t.index ["user_id"], name: "index_product_rates_on_user_id"
+  end
+
   create_table "products", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "name"
-    t.integer "price"
+    t.decimal "price", precision: 10, scale: 2
     t.text "description"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
   end
 
+  create_table "reset_codes", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "code", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_reset_codes_on_code", unique: true
+    t.index ["user_id"], name: "index_reset_codes_on_user_id"
+  end
+
+  create_table "second_factor_codes", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "code", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_second_factor_codes_on_code", unique: true
+    t.index ["user_id"], name: "index_second_factor_codes_on_user_id"
+  end
+
+  create_table "user_actions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "action_type", null: false
+    t.string "action", null: false
+    t.text "details"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_user_actions_on_user_id"
+  end
+
+  create_table "user_details", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "first_name"
+    t.string "last_name"
+    t.bigint "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_user_details_on_user_id", unique: true
+  end
+
+  create_table "user_settings", force: :cascade do |t|
+    t.boolean "two_factor", default: false, null: false
+    t.boolean "night_mode", default: false, null: false
+    t.bigint "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_user_settings_on_user_id", unique: true
+  end
+
+  create_table "users", force: :cascade do |t|
+    t.string "mail", null: false
+    t.string "password_digest", null: false
+    t.string "phone"
+    t.integer "role", null: false
+    t.boolean "active", default: false, null: false
+    t.boolean "verified", default: false, null: false
+    t.boolean "two_factor_enabled", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["mail"], name: "index_users_on_mail", unique: true
+    t.index ["phone"], name: "index_users_on_phone", unique: true
+  end
+
+  create_table "verification_codes", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "code", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_verification_codes_on_code", unique: true
+    t.index ["user_id"], name: "index_verification_codes_on_user_id"
+  end
+
+  add_foreign_key "activation_codes", "users"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "blacklisted_tokens", "users", column: "owner_id"
+  add_foreign_key "comments", "comments", column: "parent_id"
+  add_foreign_key "comments", "products"
+  add_foreign_key "comments", "users"
+  add_foreign_key "entrepreneur_details", "user_details"
+  add_foreign_key "items", "orders"
+  add_foreign_key "items", "products"
+  add_foreign_key "items", "users"
+  add_foreign_key "locations", "user_details"
+  add_foreign_key "orders", "users"
   add_foreign_key "product_photos", "products"
+  add_foreign_key "product_rates", "products"
+  add_foreign_key "product_rates", "users"
+  add_foreign_key "reset_codes", "users"
+  add_foreign_key "second_factor_codes", "users"
+  add_foreign_key "user_actions", "users"
+  add_foreign_key "user_details", "users"
+  add_foreign_key "user_settings", "users"
+  add_foreign_key "verification_codes", "users"
 end

@@ -3,6 +3,9 @@
 require 'swagger_helper'
 
 RSpec.describe 'API V1 Products', type: :request do
+  let(:test_user) { create(:user) }
+  let(:Authorization) { "Bearer #{generate_jwt_for(test_user)}" }
+
   let(:product_schema) do
     {
       type: :object,

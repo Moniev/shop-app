@@ -3,6 +3,9 @@
 require 'swagger_helper'
 
 RSpec.describe 'API V1 Users', type: :request do
+  let(:test_user) { create(:user) }
+  let(:Authorization) { "Bearer #{generate_jwt_for(test_user)}" }
+
   path '/api/v1/users' do
     get('Lists all users (Admin only)') do
       tags 'Users'
@@ -34,6 +37,7 @@ RSpec.describe 'API V1 Users', type: :request do
               user_detail_attributes: {
                 type: :object,
                 properties: {
+                  name: { type: :string, example: 'John_Doe123!' },
                   first_name: { type: :string, example: 'John' },
                   last_name: { type: :string, example: 'Doe' }
                 }

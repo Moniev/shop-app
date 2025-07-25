@@ -3,6 +3,9 @@
 require 'swagger_helper'
 
 RSpec.describe 'API V1 Authentication', type: :request do
+  let(:test_user) { create(:user) }
+  let(:Authorization) { "Bearer #{generate_jwt_for(test_user)}" }
+
   path '/api/v1/auth/login' do
     post('Logs a user in') do
       tags 'Authentication'

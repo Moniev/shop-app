@@ -2,7 +2,6 @@
 
 # Namespace for API resources and controllers.
 module Api
-  # Namespace for API version v1.
   module V1
     # Handles operations for Order resources via the API.
     #

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 FactoryBot.define do
   factory :user do
     mail { Faker::Internet.unique.email }
@@ -35,10 +37,6 @@ FactoryBot.define do
         create(:user_detail, user: user)
       end
     end
-
-    after(:create) do |user|
-      user.create_user_settings unless user.user_settings.present?
-    end
   end
 
   factory :user_detail do
@@ -49,7 +47,8 @@ FactoryBot.define do
 
   factory :user_settings do
     user
-    two_factor_enabled { false }
+    two_factor { false }
+    night_mode { true }
   end
 
   factory :activation_code do

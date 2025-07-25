@@ -20,7 +20,7 @@ class User < ApplicationRecord
   accepts_nested_attributes_for :user_detail
 
   validates :mail, presence: true, uniqueness: true
-  validates :phone, uniqueness: true, allow_nil: true
+  validates :phone, uniqueness: { case_sensitive: false }, allow_nil: true
   validates :password_digest, presence: true
 
   def create_activation_code!(code:, expires_in_hours: 24)
@@ -43,7 +43,7 @@ class User < ApplicationRecord
   end
 
   def two_factor_enabled?
-    user_settings&.two_factor_enabled
+    user_settings&.two_factor
   end
 
   def admin?

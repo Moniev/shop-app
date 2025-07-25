@@ -1,6 +1,9 @@
 require 'swagger_helper'
 
 RSpec.describe 'API V1 Cart', type: :request do
+  let(:test_user) { create(:user) }
+  let(:Authorization) { "Bearer #{generate_jwt_for(test_user)}" }
+
   path '/api/v1/cart' do
     get("Shows the current user's cart") do
       tags 'Cart'

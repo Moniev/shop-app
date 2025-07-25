@@ -1,6 +1,9 @@
 require 'swagger_helper'
 
 RSpec.describe 'API V1 Orders', type: :request do
+  let(:test_user) { create(:user) }
+  let(:Authorization) { "Bearer #{generate_jwt_for(test_user)}" }
+
   path '/api/v1/orders' do
     get('Lists orders') do
       tags 'Orders'

@@ -3,16 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe Product, type: :model do
-  before(:all) do
-    fixture_path = Rails.root.join('spec/fixtures/files')
-    FileUtils.mkdir_p(fixture_path) unless File.directory?(fixture_path)
-    unless File.exist?(fixture_path.join('test_image.png'))
-      File.open(fixture_path.join('test_image.png'), 'w') do |f|
-        f.write('fake image data')
-      end
-    end
-  end
-
   subject { create(:product) }
 
   describe 'associations' do
@@ -25,14 +15,12 @@ RSpec.describe Product, type: :model do
     it { should accept_nested_attributes_for(:product_photos).allow_destroy(true) }
 
     it 'can create product_photos through nested attributes' do
-      file = Rack::Test::UploadedFile.new(Rails.root.join('spec/fixtures/files/test_image.png'), 'image/png')
-
       product_params = {
         name: 'Laptop z dodatkami',
         price: 4500.0,
         product_photos_attributes: [
-          { image: file },
-          { image: file }
+          { image_url: 'http://example.com/photo1.jpg' },
+          { image_url: 'http://example.com/photo2.jpg' }
         ]
       }
 
@@ -41,7 +29,7 @@ RSpec.describe Product, type: :model do
 
     it 'can destroy product_photos through nested attributes' do
       product = create(:product)
-      photo = create(:product_photo, product: product)
+      photo = create(:product_photo, product: product, image_url: 'http://example.com/photo_to_delete.jpg')
 
       product_params = {
         product_photos_attributes: [

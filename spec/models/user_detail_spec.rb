@@ -68,7 +68,6 @@ RSpec.describe UserDetail, type: :model do
 
     context 'with invalid location parameters' do
       it 'does not save the location and returns errors' do
-        # Symulujemy błąd walidacji, aby przetestować ścieżkę błędu
         allow_any_instance_of(Location).to receive(:update).and_return(false)
         allow_any_instance_of(Location).to receive_message_chain(:errors,
                                                                  :full_messages).and_return(["City can't be blank"])

@@ -6,6 +6,7 @@ RSpec.describe Order, type: :model do
   before do
     allow_any_instance_of(CartObserver).to receive(:after_create)
     allow_any_instance_of(CartObserver).to receive(:after_update)
+    allow_any_instance_of(CartObserver).to receive(:after_destroy)
   end
 
   let!(:admin) { create(:user, role: :admin) }
@@ -78,9 +79,28 @@ RSpec.describe Order, type: :model do
       order = create(:order, user: user)
       create(:item, order: order, product: product1, quantity: 2, price_at_purchase: 100)
       create(:item, order: order, product: product2, quantity: 1, price_at_purchase: 50)
+      order.reload
       order.save!
       order.reload
       expect(order.total_amount).to eq(250)
+    end
+
+    it 'recalculates total_amount when an item is destroyed' do
+      order = create(:order, user: user)
+      item1 = create(:item, order: order, product: product1, quantity: 2, price_at_purchase: 100)
+      item2 = create(:item, order: order, product: product2, quantity: 1, price_at_purchase: 50)
+      order.reload
+      order.save!
+      order.reload
+      initial_amount = order.total_amount
+      expect(initial_amount).to eq(250)
+
+      item_to_destroy = item1
+      item_price = item_to_destroy.price_at_purchase * item_to_destroy.quantity
+
+      item_to_destroy.destroy
+      order.reload
+      expect(order.total_amount).to be_within(0.01).of(initial_amount - item_price)
     end
   end
 
@@ -154,6 +174,16 @@ RSpec.describe Order, type: :model do
         result = Order.create_from_cart_for(user_with_cart)
         expect(result[:order]).to be_a(Order)
         expect(result[:errors]).to be_empty
+      end
+
+      it 'rolls back the transaction if saving the order fails' do
+        allow_any_instance_of(Order).to receive(:save!).and_raise(ActiveRecord::RecordInvalid)
+
+        expect do
+          Order.create_from_cart_for(user_with_cart)
+        end.not_to change(Order, :count)
+
+        expect(user_with_cart.cart_items.reload.count).to eq(2)
       end
     end
 

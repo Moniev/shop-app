@@ -15,6 +15,7 @@ FactoryBot.define do
       after(:create) do |order, evaluator|
         create_list(:item, evaluator.items_count, order: order)
         order.reload
+        order.save!
       end
     end
 
@@ -41,6 +42,11 @@ FactoryBot.define do
     association :order
     quantity { 1 }
     price_at_purchase { product.price }
+
+    trait :in_cart do
+      association :user
+      order { nil } # A cart item is not associated with an order
+    end
   end
 
   factory :cart_item, class: 'Item' do

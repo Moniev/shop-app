@@ -4524,3 +4524,8 @@ Twilio client initialized successfully.
 Twilio client initialized successfully.
   [1m[36mActiveRecord::SchemaMigration Load (1.1ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ShopOnRails'*/[0m
 Twilio client initialized successfully.
+Twilio client initialized successfully.
+Twilio client initialized successfully.
+  [1m[36mActiveRecord::SchemaMigration Load (2.0ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ShopOnRails'*/[0m
+Twilio client initialized successfully.
+  [1m[36mActiveRecord::SchemaMigration Load (1.6ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ShopOnRails'*/[0m

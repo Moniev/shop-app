@@ -42,7 +42,12 @@ module Services
 
       begin
         cart_item = @user.cart_items.find_or_initialize_by(product: product)
-        cart_item.quantity = (cart_item.quantity || 0) + quantity
+        if cart_item.new_record?
+          cart_item.quantity = quantity
+        else
+          cart_item.quantity += quantity
+        end
+
         cart_item.price_at_purchase = product.price
         cart_item.save!
 

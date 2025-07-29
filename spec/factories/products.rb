@@ -19,4 +19,28 @@ FactoryBot.define do
       end
     end
   end
+
+  factory :product_rate do
+    association :user
+    association :product
+    rating { rand(1..5) }
+    comment { Faker::Lorem.sentence }
+  end
+
+  factory :product_like do
+    association :user
+    association :product
+  end
+
+  factory :comment do
+    association :product
+    association :user
+    content { Faker::Lorem.sentence }
+    parent { nil }
+    replies_count { 0 }
+
+    trait :with_parent do
+      association :parent, factory: :comment
+    end
+  end
 end

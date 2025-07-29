@@ -4508,3 +4508,19 @@ FOREIGN KEY ("product_id")
   [1m[36mTRANSACTION (1.3ms)[0m  [1m[35mCOMMIT /*application='ShopOnRails'*/[0m
   [1m[35m (0.3ms)[0m  [1m[34mSELECT pg_advisory_unlock(4042432855537643385) /*application='ShopOnRails'*/[0m
   [1m[36mActiveRecord::SchemaMigration Load (0.3ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ShopOnRails'*/[0m
+Twilio client initialized successfully.
+Twilio client initialized successfully.
+Twilio client initialized successfully.
+  [1m[36mActiveRecord::SchemaMigration Load (1.9ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ShopOnRails'*/[0m
+Twilio client initialized successfully.
+Twilio client initialized successfully.
+Twilio client initialized successfully.
+Twilio client initialized successfully.
+Twilio client initialized successfully.
+Twilio client initialized successfully.
+  [1m[36mActiveRecord::SchemaMigration Load (2.5ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ShopOnRails'*/[0m
+Twilio client initialized successfully.
+  [1m[36mActiveRecord::SchemaMigration Load (1.6ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ShopOnRails'*/[0m
+Twilio client initialized successfully.
+  [1m[36mActiveRecord::SchemaMigration Load (1.1ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ShopOnRails'*/[0m
+Twilio client initialized successfully.

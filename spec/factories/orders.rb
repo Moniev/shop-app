@@ -3,13 +3,9 @@
 FactoryBot.define do
   factory :order do
     association :user
-
     status { :pending }
     payment_status { :unpaid }
-    order_date { Time.current }
     delivery_address { 'ul. Testowa 1, 00-001 Warszawa' }
-
-    total_amount { 0.0 }
 
     trait :with_items do
       transient do
@@ -38,5 +34,20 @@ FactoryBot.define do
       status { :delivered }
       payment_status { :paid }
     end
+  end
+
+  factory :item do
+    association :product
+    association :order
+    quantity { 1 }
+    price_at_purchase { product.price }
+  end
+
+  factory :cart_item, class: 'Item' do
+    association :user
+    association :product
+    quantity { 1 }
+    price_at_purchase { product.price }
+    order { nil }
   end
 end

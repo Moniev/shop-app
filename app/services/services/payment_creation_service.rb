@@ -21,7 +21,7 @@ module Services
         )
       end
 
-      if order.paid?
+      if order.payment_status_paid?
         return Services::Result.new(
           success?: false,
           errors: ['This order has already been paid for.'],

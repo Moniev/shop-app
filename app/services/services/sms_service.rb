@@ -74,10 +74,12 @@ module Services
     # @return [Boolean, nil] True if the message was successfully sent, false if Twilio error,
     #   or nil if the user has no phone number.
     def self.dial_2fa_code(user, code)
-      return unless user.phone.present?
+      return false unless user.phone.present?
 
       message_body = "Your two-factor authentication code is: #{code}"
       dial(to: user.phone, body: message_body)
     end
+
+    private_class_method :client, :twilio_phone_number
   end
 end

@@ -45,7 +45,7 @@ FactoryBot.define do
 
     trait :in_cart do
       association :user
-      order { nil } # A cart item is not associated with an order
+      order { nil }
     end
   end
 

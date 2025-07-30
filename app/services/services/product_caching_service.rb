@@ -10,19 +10,17 @@
 module Services
   class ProductCachingService
     INDEX_KEYS_SET = 'products:index_cache_keys'
+    INDEX_KEY_PREFIX = 'products:page'
 
     def self.fetch_all(page = 1)
-      cache_key = "products:page:#{page}:#{Product.maximum(:updated_at).to_i}"
+      cache_key = index_cache_key(page)
 
-      begin
-        Redis.current.sadd(INDEX_KEYS_SET, cache_key)
+      redis_command { Redis.current.sadd(INDEX_KEYS_SET, cache_key) }
 
+      cache_command do
         Rails.cache.fetch(cache_key, expires_in: 12.minutes) do
-          Product.includes(:product_photos, :likes, :comments).page(page).per(25).to_a
+          Product.with_details.page(page).per(25).to_a
         end
-      rescue Redis::CannotConnectError => e
-        Rails.logger.error("Redis error during fetch_all: #{e.message}")
-        Product.includes(:product_photos, :likes, :comments).page(page).per(25).to_a
       end
     end
 
@@ -30,31 +28,44 @@ module Services
       product = Product.find_by(id: id)
       return nil unless product
 
-      begin
+      cache_command do
         Rails.cache.fetch(product, expires_in: 1.hour) do
-          product.class.includes(:product_photos, :likes, :comments).find(product.id)
+          Product.with_details.find(product.id)
         end
-      rescue Redis::CannotConnectError => e
-        Rails.logger.error("Redis error during fetch_one: #{e.message}")
-        product.class.includes(:product_photos, :likes, :comments).find(product.id)
       end
     end
 
     def self.invalidate_for_product(product)
-      Rails.cache.delete(product)
-    rescue Redis::CannotConnectError => e
-      Rails.logger.error("Redis error during cache invalidation for product #{product.id}: #{e.message}")
+      cache_command { Rails.cache.delete(product) }
     end
 
     def self.invalidate_index_pages
-      keys_to_delete = Redis.current.smembers(INDEX_KEYS_SET)
+      keys_to_delete = redis_command { Redis.current.smembers(INDEX_KEYS_SET) }
+      return if keys_to_delete.blank?
 
-      if keys_to_delete.any?
-        Rails.cache.delete_multi(keys_to_delete)
-        Redis.current.del(INDEX_KEYS_SET)
-      end
+      cache_command { Rails.cache.delete_multi(keys_to_delete) }
+      redis_command { Redis.current.del(INDEX_KEYS_SET) }
+    end
+
+    private
+
+    def self.index_cache_key(page)
+      timestamp = Product.maximum(:updated_at).to_i
+      "#{INDEX_KEY_PREFIX}:#{page}:#{timestamp}"
+    end
+
+    def self.redis_command(&block)
+      yield
     rescue Redis::CannotConnectError => e
-      Rails.logger.error("Redis error during cache invalidation: #{e.message}")
+      Rails.logger.error("Redis command failed: #{e.message}")
+      nil
+    end
+
+    def self.cache_command(&block)
+      yield
+    rescue Redis::CannotConnectError => e
+      Rails.logger.error("Rails.cache command failed, falling back to database: #{e.message}")
+      yield if block.source_location.to_s.include?('fetch')
     end
   end
 end

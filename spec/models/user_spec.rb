@@ -30,7 +30,7 @@ RSpec.describe User, type: :model do
   end
 
   describe 'enums' do
-    it { should define_enum_for(:role).with_values(%w[regular moderator admin]).with_default(:regular) }
+    it { should define_enum_for(:role).with_values(%w[regular moderator admin entrepreneur]).with_default(:regular) }
   end
 
   describe '#create_activation_code!' do

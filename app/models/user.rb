@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class User < ApplicationRecord
-  enum :role, %w[regular moderator admin], default: :regular
+  enum :role, %w[regular moderator admin entrepreneur], default: :regular
   alias user? regular?
   has_secure_password
 
@@ -28,8 +28,9 @@ class User < ApplicationRecord
     activation_code.save!
   end
 
-  def create_reset_code!(code:, expires_in_minutes: 15)
-    reset_code = ResetCode.new(user: self, code: code, expires_at: expires_in_minutes.minutes.from_now)
+  def create_reset_code!(code:, expires_in_minutes: 15, expires_at: nil)
+    final_expires_at = expires_at || expires_in_minutes.minutes.from_now
+    reset_code = ResetCode.new(user: self, code: code, expires_at: final_expires_at)
     reset_code.save!
   end
 

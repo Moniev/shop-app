@@ -9,7 +9,10 @@ class Item < ApplicationRecord
   validates :price_at_purchase, presence: true, numericality: { greater_than_or_equal_to: 0 }
 
   validate :must_belong_to_user_or_order
-  after_commit :recalculate_order_total, on: %i[create update destroy]
+  
+  after_create :recalculate_order_total
+  after_update :recalculate_order_total
+  after_destroy :recalculate_order_total
 
   private
 

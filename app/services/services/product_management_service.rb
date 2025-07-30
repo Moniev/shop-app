@@ -13,7 +13,7 @@ module Services
       return if photo_ids.blank?
 
       ids = Array(photo_ids).reject(&:blank?)
-      ProductPhoto.where(id: ids).update_all(product_id: product.id)
+      ProductPhoto.where(id: ids, product_id: nil).update_all(product_id: product.id)
     end
   end
 end

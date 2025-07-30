@@ -7,8 +7,6 @@
 # by housing operations that don't fit naturally within a single model's scope
 # or represent a cross-cutting concern. Examples include authentication flows,
 # payment processing, or external API interactions
-# frozen_string_literal: true
-
 module Services
   class UserProfileService
     def initialize(user)
@@ -31,17 +29,13 @@ module Services
 
     def update_location(location_params)
       user_detail = @user.user_detail || @user.build_user_detail
+      location = user_detail.locations.first || user_detail.locations.build
 
-      unless user_detail.present?
-        return Services::Result.new(success?: false, errors: ['User details record not found.'], status: :not_found,
-                                    message: 'Cannot update location: User details missing.')
-      end
-
-      if user_detail.update(location_params)
-        Services::Result.new(success?: true, data: { user_detail: user_detail }, status: :ok,
+      if location.update(location_params)
+        Services::Result.new(success?: true, data: { location: location }, status: :ok,
                              message: 'Location updated successfully.')
       else
-        Services::Result.new(success?: false, errors: user_detail.errors.full_messages,
+        Services::Result.new(success?: false, errors: location.errors.full_messages,
                              status: :unprocessable_entity, message: 'Location update failed.')
       end
     rescue StandardError => e
@@ -52,11 +46,6 @@ module Services
 
     def update_details(user_detail_params)
       user_detail = @user.user_detail || @user.build_user_detail
-
-      unless user_detail.present?
-        return Services::Result.new(success?: false, errors: ['User details record not found.'], status: :not_found,
-                                    message: 'Cannot update details: User details missing.')
-      end
 
       if user_detail.update(user_detail_params)
         Services::Result.new(success?: true, data: { user_detail: user_detail }, status: :ok,
@@ -72,7 +61,7 @@ module Services
     end
 
     def update_entrepreneur_details(entrepreneur_detail_params)
-      unless @user.has_role?(:entrepreneur)
+      unless @user.entrepreneur?
         return Services::Result.new(success?: false, errors: ['User is not an entrepreneur.'], status: :forbidden,
                                     message: 'Access denied: Not an entrepreneur.')
       end
@@ -81,7 +70,8 @@ module Services
                                     status: :forbidden, message: 'Cannot update: User account not active or verified.')
       end
 
-      entrepreneur_detail = @user.entrepreneur_detail || @user.build_entrepreneur_detail
+      user_detail = @user.user_detail || @user.build_user_detail
+      entrepreneur_detail = user_detail.entrepreneur_detail || user_detail.build_entrepreneur_detail
 
       if entrepreneur_detail.update(entrepreneur_detail_params)
         Services::Result.new(success?: true, data: { entrepreneur_detail: entrepreneur_detail }, status: :ok,

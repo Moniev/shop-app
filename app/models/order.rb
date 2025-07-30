@@ -41,6 +41,8 @@ class Order < ApplicationRecord
       order = user.orders.create!
       cart_items.update_all(order_id: order.id, user_id: nil)
 
+      # Reload the order here to load the newly associated items into memory
+      order.reload
       order.save!
     end
 
@@ -61,6 +63,10 @@ class Order < ApplicationRecord
     user.admin?
   end
 
+  def mark_as_paid!
+    update!(payment_status: :paid)
+  end
+
   private
 
   def set_order_date
@@ -68,6 +74,8 @@ class Order < ApplicationRecord
   end
 
   def calculate_total_amount
-    self.total_amount = items.reload.sum('items.price_at_purchase * items.quantity')
+    self.total_amount = items.reject(&:marked_for_destruction?).sum do |item|
+      (item.price_at_purchase || 0) * (item.quantity || 0)
+    end
   end
 end

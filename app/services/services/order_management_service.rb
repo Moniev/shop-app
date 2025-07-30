@@ -83,19 +83,18 @@ module Services
                                     status: :unprocessable_entity, message: 'Failed to add product: invalid input.')
       end
 
-      item = @order.items.find_or_initialize_by(product: product)
-      item.quantity = (item.quantity || 0) + quantity.to_i
-      item.price_at_purchase = product.price
-
-      if item.save!
-        @order.reload.calculate_total_amount
+      ActiveRecord::Base.transaction do
+        item = @order.items.find_or_initialize_by(product: product)
+        item.price_at_purchase = product.price if item.new_record?
+        item.quantity = item.quantity + quantity.to_i
+        
+        item.save!
+        @order.reload
         @order.save!
-        Services::Result.new(success?: true, data: { order: @order }, status: :ok,
-                             message: 'Product added to order successfully.')
-      else
-        Services::Result.new(success?: false, errors: item.errors.full_messages, status: :unprocessable_entity,
-                             message: 'Failed to add product to order.')
       end
+
+      Services::Result.new(success?: true, data: { order: @order }, status: :ok,
+                           message: 'Product added to order successfully.')
     rescue ActiveRecord::RecordInvalid => e
       Services::Result.new(success?: false, errors: e.record.errors.full_messages, status: :unprocessable_entity,
                            message: 'Failed to add product to order due to validation errors.')

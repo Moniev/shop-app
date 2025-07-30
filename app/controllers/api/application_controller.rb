@@ -70,9 +70,9 @@ module Api
     # **NOTE**: With CanCanCan's `load_and_authorize_resource`, this method might become redundant
     # if your abilities file correctly handles admin-only access for resources/actions.
     #
-    # @raise [Api::Forbidden] If the current user is not an admin.
+    # @raise [Api::ApplicationController::Forbidden] If the current user is not an admin.
     def authorize_admin!
-      raise Api::Forbidden, 'Admin access required.' unless current_user&.admin?
+      raise Forbidden, 'Admin access required.' unless current_user&.admin?
     end
 
     # Memoizes and returns the authenticated user for the current request.
@@ -90,8 +90,8 @@ module Api
     # This is a `before_action` that ensures the request is authenticated.
     # If authentication fails, it renders an error response and halts the request.
     #
-    # @raise [Api::Unauthorized] If the token is missing, invalid, or user not found.
-    # @raise [Api::Forbidden] If the user's account is not active or verified.
+    # @raise [Api::ApplicationController::Unauthorized] If the token is missing, invalid, or user not found.
+    # @raise [Api::ApplicationController::Forbidden] If the user's account is not active or verified.
     # @return [void]
     def authenticate_user!
       token = request.headers['Authorization']&.split&.last

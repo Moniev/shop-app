@@ -42,7 +42,6 @@ RSpec.describe Api::ApplicationController, type: :controller do
     end
   end
 
-  # Define routes for the anonymous controller's actions
   before do
     routes.draw do
       get 'index' => 'api/application#index'

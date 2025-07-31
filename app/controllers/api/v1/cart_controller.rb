@@ -21,8 +21,7 @@ module Api
       # @return [void] Sets instance variables for the Jbuilder view to render
       #   a JSON object representing the cart, with a status of `:ok` (200).
       def show
-        render_cart_summary
-        @status = :ok
+        bind_data_and_render
       end
 
       # POST /api/v1/cart/add/:product_id
@@ -40,8 +39,7 @@ module Api
       # @see Services::CartService#add_product
       def add
         result = cart_service.add_product(params[:product_id], add_params[:quantity])
-        bind_data(result)
-        render_cart_summary
+        bind_data_and_render(result)
       end
 
       # DELETE /api/v1/cart/revoke/:item_id
@@ -60,8 +58,7 @@ module Api
       # @see Services::CartService#remove_product
       def revoke
         result = cart_service.remove_product(params[:item_id], revoke_params[:quantity_to_remove])
-        bind_data(result)
-        render_cart_summary
+        bind_data_and_render(result)
       end
 
       # DELETE /api/v1/cart/clear
@@ -73,8 +70,7 @@ module Api
       # @see Services::CartService#clear
       def clear
         result = cart_service.clear
-        bind_data(result)
-        render_cart_summary
+        bind_data_and_render(result)
       end
 
       private
@@ -85,12 +81,19 @@ module Api
         @cart_service ||= Services::CartService.new(current_user)
       end
 
-      def render_cart_summary
-        current_cart_summary = cart_service.get_cart_summary
-        @cart_items = current_cart_summary[:cart_items]
-        @total_amount = current_cart_summary[:total_amount]
-        @items_count = current_cart_summary[:items_count]
-        render :show
+      def bind_data_and_render(result = nil)
+        if result
+          bind_data(result)
+        else
+          @status = :ok
+          @errors = []
+        end
+        summary = cart_service.get_cart_summary
+        @cart_items = summary[:cart_items]
+        @total_amount = summary[:total_amount]
+        @items_count = summary[:items_count]
+
+        render :show, status: @status, locals: { current_user: current_user }
       end
 
       # Strong parameters for the 'add' action.

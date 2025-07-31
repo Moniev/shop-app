@@ -19,7 +19,7 @@ module Api
       # @see Services::DiagnosticsService.readiness_probe
       def readiness
         result = Services::DiagnosticsService.readiness_probe
-        bind_data(result)
+        bind_data_and_render(result)
       end
 
       # GET /api/v1/diagnostics/health
@@ -31,8 +31,7 @@ module Api
       # @see Services::DiagnosticsService.health_probe
       def health
         result = Services::DiagnosticsService.health_probe
-        bind_data(result)
-        @details = result[:details]
+        bind_data_and_render(result)
       end
 
       # GET /api/v1/diagnostics/metrics
@@ -46,20 +45,24 @@ module Api
       #   `text/plain; version=0.0.4` content type and a 200 OK status.
       # @see Services::PrometheusInstrumentor
       def metrics
-        exporter = Prometheus::Client::Formats::Text.new
-        render plain: exporter.export(Services::PrometheusInstrumentor.registry),
+        registry = Services::Instrumentor.registry
+        render plain: Prometheus::Client::Formats::Text.marshal(registry),
                content_type: 'text/plain; version=0.0.4'
       end
 
       private
 
-      # Binds common data from a service result object to controller instance variables.
-      # Assumes result object has :status, :message, and :errors keys (or methods).
-      # @param result [Hash, Services::Result] The result object from a service call.
       def bind_data(result)
         @status = result[:status]
         @message = result[:message]
-        @errors = result[:errors]
+        @errors = result[:errors] || []
+        @success = @errors.empty?
+        @data = { details: result[:details] } if result[:details]
+      end
+
+      def bind_data_and_render(result)
+        bind_data(result)
+        render '_probe_result', status: @status
       end
     end
   end

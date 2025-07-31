@@ -4761,3 +4761,13 @@ FOREIGN KEY ("user_id")
   [1m[36mActiveRecord::InternalMetadata Create (1.2ms)[0m  [1m[32mINSERT INTO "ar_internal_metadata" ("key", "value", "created_at", "updated_at") VALUES ('schema_sha1', 'ed02bc7adb4cdcf69c4c7c7b3e96c3f4cb78049b', '2025-07-30 18:57:56.031697', '2025-07-30 18:57:56.031698') RETURNING "key" /*application='ShopOnRails'*/[0m
 Twilio client initialized successfully.
   [1m[36mActiveRecord::SchemaMigration Load (1.4ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ShopOnRails'*/[0m
+Twilio client initialized successfully.
+  [1m[36mActiveRecord::SchemaMigration Load (1.3ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ShopOnRails'*/[0m
+Twilio client initialized successfully.
+Twilio client initialized successfully.
+Twilio client initialized successfully.
+Twilio client initialized successfully.
+Twilio client initialized successfully.
+  [1m[36mActiveRecord::SchemaMigration Load (2.6ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ShopOnRails'*/[0m
+Twilio client initialized successfully.
+  [1m[36mActiveRecord::SchemaMigration Load (1.6ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ShopOnRails'*/[0m

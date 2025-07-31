@@ -150,7 +150,7 @@ RSpec.describe Api::ApplicationController, type: :controller do
 
     it 'rescues from ActiveRecord::RecordInvalid with a 422 status' do
       get :unprocessable
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = JSON.parse(response.body)
       expect(json['message']).to eq('Validation failed.')
     end

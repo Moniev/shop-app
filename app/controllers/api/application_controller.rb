@@ -11,6 +11,8 @@ module Api
     around_action :measure_execution_time
     before_action :set_default_response_format
     before_action :authenticate_user!
+    helper_method :combined_fragment_cache_key
+    helper_method :view_cache_dependencies
 
     class Unauthorized < StandardError; end
     class Forbidden < StandardError; end
@@ -33,7 +35,7 @@ module Api
     rescue_from ActiveRecord::RecordInvalid do |exception|
       Rails.logger.warn "RecordInvalid: #{exception.record.errors.full_messages.join(', ')}"
       render json: { errors: exception.record.errors.full_messages, message: 'Validation failed.' },
-             status: :unprocessable_entity
+             status: :unprocessable_content
     end
 
     rescue_from ArgumentError, BadRequest do |exception|
@@ -82,8 +84,8 @@ module Api
     def current_user
       return unless @decoded_jwt_token&.success?
 
-      @current_user ||= User.find_by(id: @decoded_jwt_token&.data&.dig(:payload,
-                                                                       :user_id))
+      @current_user ||= User.find_by(id: @decoded_jwt_token&.data&.dig(:payload, :user_id))
+      Rails.logger.debug { "Handling action for user ID: #{@current_user&.id}" } if @current_user
     end
 
     # The primary authentication filter for securing endpoints.
@@ -94,6 +96,7 @@ module Api
     # @raise [Api::ApplicationController::Forbidden] If the user's account is not active or verified.
     # @return [void]
     def authenticate_user!
+      Rails.logger.debug 'Authenticating user'
       token = request.headers['Authorization']&.split&.last
       token_decode_result = Services::BearerService.decode(token || '')
 
@@ -125,10 +128,18 @@ module Api
     # @param result [Services::Result] The result object from a service call.
     # @return [void]
     def bind_data(result)
-      @message ||= result.message
-      @errors ||= result.errors
+      Rails.logger.debug 'Binding data'
+      @success = result.success?
       @status = result.status
-      response.status = @status
+      @message = result.message || ''
+
+      if @success
+        @data = result.data || {}
+        @errors = []
+      else
+        @data = {}
+        @errors = result.errors || []
+      end
     end
 
     protected

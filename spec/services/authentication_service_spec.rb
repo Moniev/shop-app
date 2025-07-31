@@ -8,7 +8,6 @@ RSpec.describe Services::AuthenticationService, type: :service do
 
   let(:success_token_result) { Services::Result.new(success?: true, data: { token: token }) }
   let(:failed_token_result) { Services::Result.new(success?: false, errors: ['Token generation failed']) }
-
   let(:bearer_service_double) { double('BearerService') }
   let(:sms_service_double) { double('SMSService') }
   let(:user_mailer_double) { double('UserMailer') }

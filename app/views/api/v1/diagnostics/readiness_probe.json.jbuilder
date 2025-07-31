@@ -1,9 +1,3 @@
 # frozen_string_literal: true
 
-if @errors
-  json.errors @errors
-  json.status @status
-else
-  json.message @message
-  json.status @status
-end
+json.partial! 'api/v1/diagnostics/probe_result'

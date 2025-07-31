@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-json.message @message
-json.user do
-  json.id @user.id
-  json.mail @user.mail
-  json.active @user.active?
-end
+@data = {}
+
+@data[:user] = json.partial! 'api/v1/users/user_data', user: @user if @success && @user
+
+json.partial! 'auth', json: json

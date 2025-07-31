@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
-  mount Rswag::Ui::Engine => '/api-docs'
-  mount Rswag::Api::Engine => '/api-docs'
+  mount Rswag::Ui::Engine => '/api_docs'
+  mount Rswag::Api::Engine => '/api_docs'
   namespace :api do
     namespace :v1 do
       scope :auth, controller: :auth do

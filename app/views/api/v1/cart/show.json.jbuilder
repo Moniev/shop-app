@@ -1,7 +1,11 @@
 # frozen_string_literal: true
 
-json.cache! ['cart', current_user.id, @cart_items.maximum(:updated_at) || Time.current, @items_count] do
-  json.cart do
+json.cache! ['cart', current_user, @cart_items.maximum(:updated_at)] do
+  json.success @errors.blank?
+  json.message @message if @message.present?
+  json.errors @errors if @errors.present?
+
+  json.data do
     json.total_amount @total_amount
     json.items_count @items_count
 

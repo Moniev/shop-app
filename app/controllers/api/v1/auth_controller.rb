@@ -24,8 +24,8 @@ module Api
       # @see Services::AuthenticationService.login
       def login
         result = Services::AuthenticationService.login(params[:mail], params[:password])
-        @user = User.find_by(mail: params[:mail])
-        bind_data(result)
+        user = User.find_by(mail: params[:mail]) if result.success?
+        bind_data_and_render(result, 'login', user: user)
       end
 
       # POST /api/v1/auth/verify_2fa
@@ -39,18 +39,13 @@ module Api
       #   for the Jbuilder view (`verify_2fa.json.jbuilder`).
       # @see Services::AuthenticationService.verify_2fa
       def verify_2fa
-        @user = User.find_by(mail: params[:mail])
-        result = if @user
-                   Services::AuthenticationService.verify_2fa(@user, params[:second_factor_code])
+        user = User.find_by(mail: params[:mail])
+        result = if user
+                   Services::AuthenticationService.verify_2fa(user, params[:second_factor_code])
                  else
-                   Services::AuthenticationService::Result.new(
-                     success?: false,
-                     errors: ['User not found'],
-                     status: :unauthorized
-                   )
+                   Services::Result.new(success?: false, errors: ['User not found'], status: :unauthorized)
                  end
-        bind_data(result)
-        @token = result.data[:token]
+        bind_data_and_render(result, 'verify_2fa', user: user)
       end
 
       # PATCH /api/v1/auth/activate
@@ -64,17 +59,13 @@ module Api
       #   for the Jbuilder view (`activate.json.jbuilder`).
       # @see Services::AccountManagementService.activate
       def activate
-        @user = User.find_by(mail: params[:mail])
-        result = if @user
-                   Services::AccountManagementService.activate(@user, params[:activation_code])
+        user = User.find_by(mail: params[:mail])
+        result = if user
+                   Services::UserManagementService.activate(user, params[:activation_code])
                  else
-                   Services::AccountManagementService::Result.new(
-                     success?: false,
-                     errors: ['User not found'],
-                     status: :unprocessable_entity
-                   )
+                   Services::Result.new(success?: false, errors: ['User not found'], status: :unprocessable_content)
                  end
-        bind_data(result)
+        bind_data_and_render(result, 'activate', user: user)
       end
 
       # PATCH /api/v1/auth/verify
@@ -88,17 +79,17 @@ module Api
       #   for the Jbuilder view (`verify.json.jbuilder`).
       # @see Services::AccountManagementService.verify
       def verify
-        @user = User.find_by(mail: params[:mail])
-        result = if @user
-                   Services::AccountManagementService.verify(@user, params[:verification_code])
+        user = User.find_by(mail: params[:mail])
+        result = if user
+                   Services::UserManagementService.verify(user, params[:verification_code])
                  else
-                   Services::AccountManagementService::Result.new(
+                   Services::Result.new(
                      success?: false,
                      errors: ['User not found'],
-                     status: :unprocessable_entity
+                     status: :unprocessable_content
                    )
                  end
-        bind_data(result)
+        bind_data_and_render(result, 'verify', user: user)
       end
 
       # POST /api/v1/auth/password/reset
@@ -112,7 +103,7 @@ module Api
       # @see Services::PasswordResetService.request
       def request_reset
         result = Services::PasswordResetService.request(params[:mail])
-        bind_data(result)
+        bind_data_and_render(result, 'request_reset')
       end
 
       # PATCH /api/v1/auth/password/reset
@@ -129,10 +120,16 @@ module Api
       def confirm_reset
         result = Services::PasswordResetService.reset(params[:reset_code], params[:password],
                                                       params[:password_confirmation])
-        bind_data(result)
+        bind_data_and_render(result, 'confirm_reset')
       end
 
       private
+
+      def bind_data_and_render(result, view_name, locals = {})
+        bind_data(result)
+        @token = @data[:token] if @data.is_a?(Hash)
+        render view_name, status: @status, locals: locals.merge(token: @token)
+      end
 
       # Defines permitted parameters for creating a user.
       # This is a "strong parameters" method to protect against mass assignment.

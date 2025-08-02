@@ -9,48 +9,78 @@
 # payment processing, or external API interactions
 module Services
   class OrderCreationService
-    def self.call(user)
-      cart_items = user.cart_items.includes(:product)
-      if cart_items.empty?
-        return Services::Result.new(
-          success?: false,
-          errors: ['Your cart is empty.'],
-          status: :unprocessable_entity,
-          message: 'Order creation failed: Your cart is empty.'
-        )
-      end
+    def self.call(user:, cart_item_ids: [])
+      new(user: user, cart_item_ids: cart_item_ids).call
+    end
 
+    def initialize(user:, cart_item_ids: [])
+      @user = user
+      @cart_item_ids = cart_item_ids
+    end
+
+    def call
+      cart_items = find_cart_items
+      return handle_empty_cart if cart_items.empty?
+
+      process_order_creation(cart_items)
+    end
+
+    private
+
+    def process_order_creation(cart_items)
       order = nil
-      begin
-        ActiveRecord::Base.transaction do
-          order = user.orders.create!(status: :pending, payment_status: :unpaid)
-          cart_items.update_all(order_id: order.id)
-
-          order.reload
-          order.save!
-        end
-        Services::Result.new(
-          success?: true,
-          data: { order: order },
-          status: :created,
-          message: 'Order created successfully from cart.'
-        )
-      rescue ActiveRecord::RecordInvalid => e
-        Services::Result.new(
-          success?: false,
-          errors: order&.errors&.full_messages || e.message.split("\n"),
-          status: :unprocessable_entity,
-          message: 'Order creation failed due to validation errors.'
-        )
-      rescue StandardError => e
-        Rails.logger.error("Order creation failed for user #{user.id}: #{e.message}")
-        Services::Result.new(
-          success?: false,
-          errors: ['An unexpected error occurred during order creation.'],
-          status: :internal_server_error,
-          message: 'An unexpected error occurred.'
-        )
+      ActiveRecord::Base.transaction do
+        order = @user.orders.create!
+        cart_items.update_all(order_id: order.id, user_id: nil)
+        order.reload.save!
       end
+
+      Services::Result.new(
+        success?: true,
+        data: { order: order },
+        status: :created,
+        message: 'Order created successfully.'
+      )
+    rescue ActiveRecord::RecordInvalid => e
+      handle_validation_error(e, order)
+    rescue StandardError => e
+      handle_generic_error(e)
+    end
+
+    def find_cart_items
+      if @cart_item_ids.present?
+        @user.cart_items.where(id: @cart_item_ids)
+      else
+        @user.cart_items
+      end
+    end
+
+    def handle_empty_cart
+      Services::Result.new(
+        success?: false,
+        errors: ['Your cart is empty or no items were selected.'],
+        status: :unprocessable_content
+      )
+    end
+
+    def handle_validation_error(exception, order)
+      errors = order&.errors&.full_messages || exception.message.split("\n")
+      Services::Result.new(
+        success?: false,
+        errors: errors,
+        status: :unprocessable_content,
+        message: 'Order creation failed due to validation errors.'
+      )
+    end
+
+    def handle_generic_error(exception)
+      Rails.logger.error("Order creation failed for user #{@user.id}: #{exception.message}")
+      Services::Result.new(
+        success?: false,
+        errors: ['An unexpected error occurred during order creation.'],
+        status: :internal_server_error,
+        message: 'An unexpected error occurred.'
+      )
     end
   end
 end

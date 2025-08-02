@@ -10,6 +10,7 @@ module Api
     # It enforces authentication and role-based authorization for secure access.
     class OrdersController < Api::ApplicationController
       load_and_authorize_resource except: %i[me create]
+      before_action :set_product, only: %i[add_product remove_product]
 
       # GET /api/v1/orders
       #
@@ -63,7 +64,10 @@ module Api
       #   with the appropriate status.
       # @see Services::OrderCreationService.call
       def create
-        result = Services::OrderCreationService.call(current_user)
+        result = Services::OrderCreationService.call(
+          user: current_user,
+          cart_item_ids: order_params[:cart_item_ids]
+        )
         bind_data_and_render(result, 'show')
       end
 
@@ -81,6 +85,18 @@ module Api
       # @see Services::OrderManagementService#update
       def update
         result = order_management_service.update(order_params)
+        bind_data_and_render(result, 'show')
+      end
+
+      def add_product
+        quantity = add_product_params[:quantity]
+        result = order_management_service.add_product(@product, quantity)
+        bind_data_and_render(result, 'show')
+      end
+
+      def remove_product
+        quantity = remove_product_params[:quantity]
+        result = order_management_service.remove_product(@product, quantity)
         bind_data_and_render(result, 'show')
       end
 
@@ -111,6 +127,12 @@ module Api
       end
 
       private
+
+      def set_product
+        product_id = params[:product_id] || add_product_params[:product_id]
+        @product = Product.find_by(id: product_id)
+        render json: { errors: ['Product not found.'] }, status: :not_found unless @product
+      end
 
       def bind_data_and_render(result = nil, view_name = 'show')
         if result
@@ -145,11 +167,23 @@ module Api
         @order_management_service ||= Services::OrderManagementService.new(@order)
       end
 
+      def update_order_params
+        params.require(:order).permit(:status, :payment_status)
+      end
+
       # Defines permitted parameters for updating an order.
       #
       # @return [ActionController::Parameters] An object with the permitted parameters.
       def order_params
-        params.require(:order).permit(:status, :payment_status)
+        params.fetch(:order, {}).permit(cart_item_ids: [])
+      end
+
+      def add_product_params
+        params.require(:order).permit(:product_id, :quantity)
+      end
+
+      def remove_product_params
+        params.permit(:product_id, :quantity)
       end
     end
   end

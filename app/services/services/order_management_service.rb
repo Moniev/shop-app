@@ -93,12 +93,10 @@ module Services
       end
 
       ActiveRecord::Base.transaction do
-        item = @order.items.find_or_initialize_by(product: product)
-        item.price_at_purchase = product.price if item.new_record?
-        item.quantity = item.quantity + quantity.to_i
+        item = @order.items.find_or_initialize_by(product_id: product.id)
+        item.price_at_purchase ||= product.price
+        item.increment!(:quantity, quantity.to_i)
 
-        item.save!
-        @order.reload
         @order.save!
       end
 
@@ -110,6 +108,46 @@ module Services
     rescue StandardError => e
       Rails.logger.error("Failed to add product to order ID #{@order.id}: #{e.message}")
       Services::Result.new(success?: false, errors: ['An unexpected error occurred while adding product to order.'],
+                           status: :internal_server_error, message: 'An unexpected error occurred.')
+    end
+
+    def remove_product(product, quantity = nil)
+      item = @order.items.find_by(product_id: product&.id)
+
+      unless item
+        return Services::Result.new(success?: false, errors: ['Product not found in order.'],
+                                    status: :not_found, message: 'Failed to remove product: product not found.')
+      end
+
+      ActiveRecord::Base.transaction do
+        if quantity.nil?
+          item.destroy!
+        else
+          quantity_to_remove = quantity.to_i
+          if quantity_to_remove <= 0
+            return Services::Result.new(success?: false, errors: ['Quantity must be a positive number.'],
+                                        status: :unprocessable_entity, message: 'Invalid quantity.')
+          end
+          if quantity_to_remove > item.quantity
+            return Services::Result.new(success?: false, errors: ["Cannot remove #{quantity_to_remove} items, only #{item.quantity} present."],
+                                        status: :unprocessable_entity, message: 'Quantity to remove exceeds quantity in order.')
+          end
+
+          item.decrement!(:quantity, quantity_to_remove)
+          item.destroy! if item.quantity <= 0
+        end
+        @order.items.reload
+        @order.save!
+      end
+
+      Services::Result.new(success?: true, data: { order: @order.reload }, status: :ok,
+                           message: 'Product removed from order successfully.')
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotDestroyed => e
+      Services::Result.new(success?: false, errors: e.record.errors.full_messages, status: :unprocessable_entity,
+                           message: 'Failed to remove product from order due to validation errors.')
+    rescue StandardError => e
+      Rails.logger.error("Failed to remove product from order ID #{@order.id}: #{e.message}")
+      Services::Result.new(success?: false, errors: ['An unexpected error occurred while removing product from order.'],
                            status: :internal_server_error, message: 'An unexpected error occurred.')
     end
   end

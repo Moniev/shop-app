@@ -48,6 +48,8 @@ Rails.application.routes.draw do
         end
         member do
           post 'cancel'
+          post 'products', to: 'orders#add_product'
+          delete 'products/:product_id', to: 'orders#remove_product', as: :remove_product
         end
       end
 

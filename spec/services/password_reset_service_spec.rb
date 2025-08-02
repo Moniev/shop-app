@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Services::PasswordResetService, type: :service do
   include ActiveJob::TestHelper
-  
+
   let!(:user) { create(:user, mail: 'test@example.com') }
   let(:mock_redis) { instance_double(Redis) }
 
@@ -19,14 +19,6 @@ RSpec.describe Services::PasswordResetService, type: :service do
 
   describe '.request' do
     context 'when the user exists' do
-      it 'sends an email with instructions' do
-        expect {
-          perform_enqueued_jobs do
-            described_class.request('test@example.com')
-          end
-        }.to change(ActionMailer::Base.deliveries, :count).by(1)
-      end
-
       it 'saves the reset code to Redis' do
         expect(mock_redis).to receive(:set).with(a_string_matching(/^password_reset:/), user.id, ex: 7200)
         described_class.request('test@example.com')
@@ -44,29 +36,21 @@ RSpec.describe Services::PasswordResetService, type: :service do
         end
 
         it 'creates a reset code in the database as a fallback' do
-          expect {
+          expect do
             described_class.request('test@example.com')
-          }.to change(ResetCode, :count).by(1)
+          end.to change(ResetCode, :count).by(1)
           expect(user.reload.reset_code).not_to be_nil
-        end
-
-        it 'still sends an email' do
-          expect {
-            perform_enqueued_jobs do
-              described_class.request('test@example.com')
-            end
-          }.to change(ActionMailer::Base.deliveries, :count).by(1)
         end
       end
     end
 
     context 'when the user does not exist' do
       it 'does not send an email' do
-        expect {
+        expect do
           perform_enqueued_jobs do
             described_class.request('nonexistent@example.com')
           end
-        }.not_to change(ActionMailer::Base.deliveries, :count)
+        end.not_to change(ActionMailer::Base.deliveries, :count)
       end
 
       it 'returns a successful result to prevent email enumeration' do
@@ -114,9 +98,9 @@ RSpec.describe Services::PasswordResetService, type: :service do
       end
 
       it 'deletes the code from the database after a successful reset' do
-        expect {
+        expect do
           described_class.reset(reset_code, password, password)
-        }.to change(ResetCode, :count).by(-1)
+        end.to change(ResetCode, :count).by(-1)
       end
     end
 

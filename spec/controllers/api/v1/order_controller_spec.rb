@@ -10,8 +10,14 @@ RSpec.describe Api::V1::OrdersController, type: :controller do
       namespace :api do
         namespace :v1 do
           resources :orders, only: %i[index show create update destroy] do
-            post 'cancel', on: :member
-            get 'me', on: :collection
+            member do
+              post 'cancel'
+              post 'products', to: 'orders#add_product'
+              delete 'products/:product_id', to: 'orders#remove_product'
+            end
+            collection do
+              get 'me'
+            end
           end
         end
       end
@@ -22,6 +28,7 @@ RSpec.describe Api::V1::OrdersController, type: :controller do
   let!(:user) { create(:user, :with_detail, role: :regular) }
   let!(:admin) { create(:user, :with_detail, role: :admin) }
   let!(:order) { create(:order, user: user) }
+  let(:product) { create(:product) }
   let(:order_creation_service) { instance_double(Services::OrderCreationService) }
   let(:order_management_service) { instance_double(Services::OrderManagementService) }
 
@@ -35,6 +42,14 @@ RSpec.describe Api::V1::OrdersController, type: :controller do
 
     allow(Services::OrderManagementService).to receive(:new).with(order).and_return(order_management_service)
 
+    allow(order_management_service).to receive(:add_product).and_return(
+      Services::Result.new(success?: true, data: { order: order }, status: :ok,
+                           message: 'Product added successfully.')
+    )
+    allow(order_management_service).to receive(:remove_product).and_return(
+      Services::Result.new(success?: true, data: { order: order }, status: :ok,
+                           message: 'Product removed successfully.')
+    )
     allow(order_management_service).to receive(:destroy).and_return(
       Services::Result.new(success?: true, status: :no_content)
     )
@@ -134,6 +149,66 @@ RSpec.describe Api::V1::OrdersController, type: :controller do
       expect(response).to have_http_status(:ok)
       json_response = JSON.parse(response.body)
       expect(json_response['message']).to eq('Order cancelled successfully.')
+    end
+  end
+
+  describe 'POST #add_product' do
+    let(:params) { { id: order.id, order: { product_id: product.id, quantity: 2 } } }
+
+    before do
+      allow(controller).to receive(:current_user).and_return(user)
+    end
+
+    context 'when the product exists' do
+      it 'calls the order management service and returns a successful response' do
+        expect(order_management_service).to receive(:add_product).with(product, '2').and_call_original
+        post :add_product, params: params, format: :json
+
+        expect(response).to have_http_status(:ok)
+        json_response = JSON.parse(response.body)
+        expect(json_response['message']).to eq('Product added successfully.')
+      end
+    end
+
+    context 'when the product does not exist' do
+      it 'returns a not_found error' do
+        params[:order][:product_id] = 'invalid-id'
+        post :add_product, params: params, format: :json
+
+        expect(response).to have_http_status(:not_found)
+        json_response = JSON.parse(response.body)
+        expect(json_response['errors']).to include('Product not found.')
+      end
+    end
+  end
+
+  describe 'DELETE #remove_product' do
+    let(:params) { { id: order.id, product_id: product.id, quantity: 1 } }
+
+    before do
+      allow(controller).to receive(:current_user).and_return(user)
+    end
+
+    context 'when the product exists' do
+      it 'calls the order management service and returns a successful response' do
+        expect(order_management_service).to receive(:remove_product).with(product, '1').and_call_original
+        delete :remove_product, params: params, format: :json
+
+        expect(response).to have_http_status(:ok)
+        json_response = JSON.parse(response.body)
+        expect(json_response['message']).to eq('Product removed successfully.')
+      end
+    end
+
+    context 'when the product does not exist' do
+      it 'returns a not_found error' do
+        params[:product_id] = 'invalid-id'
+        delete :remove_product, params: params, format: :json
+
+        expect(response).to have_http_status(:not_found)
+        json_response = JSON.parse(response.body)
+        expect(json_response['errors']).to include('Product not found.')
+      end
     end
   end
 

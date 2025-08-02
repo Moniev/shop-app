@@ -14,9 +14,9 @@ RSpec.describe Services::ProductDeletionService, type: :service do
   describe '.call' do
     context 'when deletion is successful' do
       it 'destroys the product' do
-        expect {
+        expect do
           described_class.call(product)
-        }.to change(Product, :count).by(-1)
+        end.to change(Product, :count).by(-1)
       end
 
       it 'invalidates the index pages cache' do
@@ -38,9 +38,9 @@ RSpec.describe Services::ProductDeletionService, type: :service do
       end
 
       it 'does not destroy the product' do
-        expect {
+        expect do
           described_class.call(product)
-        }.not_to change(Product, :count)
+        end.not_to change(Product, :count)
       end
 
       it 'does not invalidate the cache' do
@@ -67,9 +67,9 @@ RSpec.describe Services::ProductDeletionService, type: :service do
       end
 
       it 'does not destroy the product due to transaction rollback' do
-        expect {
+        expect do
           described_class.call(product)
-        }.not_to change(Product, :count)
+        end.not_to change(Product, :count)
       end
 
       it 'logs the error' do

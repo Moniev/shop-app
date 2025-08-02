@@ -41,7 +41,6 @@ class Order < ApplicationRecord
       order = user.orders.create!
       cart_items.update_all(order_id: order.id, user_id: nil)
 
-      # Reload the order here to load the newly associated items into memory
       order.reload
       order.save!
     end

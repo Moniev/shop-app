@@ -8,7 +8,7 @@ module Api
     # This controller provides endpoints to create and view payments associated with orders.
     # It integrates with the Payment model, which handles interaction with the
     # Stripe payment gateway. Access is restricted based on user ownership and roles.
-    class PaymentsController < ApplicationController
+    class PaymentsController < Api::ApplicationController
       load_and_authorize_resource except: [:create]
 
       # GET /api/v1/payments
@@ -22,7 +22,7 @@ module Api
       #   `index.json.jbuilder` with a status of `:ok` (200).
       def index
         @payments = Payment.includes(:order).order(created_at: :desc)
-        @status = :ok
+        bind_data_and_render(nil, 'index')
       end
 
       # GET /api/v1/payments/:id
@@ -36,7 +36,7 @@ module Api
       # @return [void] Implicitly renders the `@payment` using `show.json.jbuilder` with a
       #   status of `:ok` (200).
       def show
-        @status = :ok
+        bind_data_and_render(nil, 'show')
       end
 
       # POST /api/v1/payments
@@ -57,11 +57,31 @@ module Api
           stripe_token: payment_params[:stripe_token]
         )
 
-        @payment = result.data[:payment]
-        bind_data(result)
+        bind_data_and_render(result, 'show')
       end
 
       private
+
+      def bind_data_and_render(result = nil, view_name = 'show')
+        if result
+          @success = result.success?
+          @status = result.status
+          @message = result.message || ''
+
+          if @success
+            if result.data.key?(:payment)
+              @payment = result.data[:payment]
+            elsif result.data.key?(:payments)
+              @payments = result.data[:payments]
+            end
+            render view_name, status: @status
+          else
+            render json: { errors: result.errors || [] }, status: @status
+          end
+        else
+          render view_name, status: :ok
+        end
+      end
 
       # Defines permitted parameters for creating a payment.
       #

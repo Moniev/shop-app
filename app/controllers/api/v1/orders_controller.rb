@@ -8,7 +8,7 @@ module Api
     # This controller provides endpoints to manage user orders, including listing,
     # creating from a cart, viewing details, and modifying status.
     # It enforces authentication and role-based authorization for secure access.
-    class OrdersController < ApplicationController
+    class OrdersController < Api::ApplicationController
       load_and_authorize_resource except: %i[me create]
 
       # GET /api/v1/orders
@@ -22,7 +22,7 @@ module Api
       #   `index.json.jbuilder` with a status of `:ok` (200).
       def index
         @orders = Order.accessible_by(current_user).includes(:user, :items).order(created_at: :desc)
-        @status = :ok
+        bind_data_and_render(nil, 'index')
       end
 
       # GET /api/v1/orders/me
@@ -35,7 +35,7 @@ module Api
       #   `me.json.jbuilder` with a status of `:ok` (200).
       def me
         @orders = current_user.orders.includes(:items).order(created_at: :desc)
-        @status = :ok
+        bind_data_and_render(nil, 'index')
       end
 
       # GET /api/v1/orders/:id
@@ -48,7 +48,7 @@ module Api
       # @return [void] Implicitly renders the `@order` using `show.json.jbuilder` with a
       #   status of `:ok` (200).
       def show
-        @status = :ok
+        bind_data_and_render(nil, 'show')
       end
 
       # POST /api/v1/orders
@@ -64,8 +64,7 @@ module Api
       # @see Services::OrderCreationService.call
       def create
         result = Services::OrderCreationService.call(current_user)
-        @order = result.data[:order]
-        bind_data(result)
+        bind_data_and_render(result, 'show')
       end
 
       # PATCH/PUT /api/v1/orders/:id
@@ -82,8 +81,7 @@ module Api
       # @see Services::OrderManagementService#update
       def update
         result = order_management_service.update(order_params)
-        @order = result.data[:order]
-        bind_data(result)
+        bind_data_and_render(result, 'show')
       end
 
       # POST /api/v1/orders/:id/cancel
@@ -96,8 +94,7 @@ module Api
       # @see Services::OrderManagementService#cancel
       def cancel
         result = order_management_service.cancel
-        @order = result.data[:order]
-        bind_data(result)
+        bind_data_and_render(result, 'show')
       end
 
       # DELETE /api/v1/orders/:id
@@ -110,10 +107,37 @@ module Api
       # @see Services::OrderManagementService#destroy
       def destroy
         result = order_management_service.destroy
-        bind_data(result)
+        handle_destroy_response(result)
       end
 
       private
+
+      def bind_data_and_render(result = nil, view_name = 'show')
+        if result
+          bind_data(result)
+          if @success
+            if @data.key?(:order)
+              @order = @data[:order]
+            elsif @data.key?(:orders)
+              @orders = @data[:orders]
+            end
+            render view_name, status: @status
+          else
+            render json: { errors: @errors }, status: @status
+          end
+        else
+          render view_name, status: :ok
+        end
+      end
+
+      def handle_destroy_response(result)
+        bind_data(result)
+        if @success
+          head @status
+        else
+          render json: { errors: @errors }, status: @status
+        end
+      end
 
       # Initializes and returns an instance of OrderManagementService for the loaded @order.
       # @return [Services::OrderManagementService] An instance of OrderManagementService.

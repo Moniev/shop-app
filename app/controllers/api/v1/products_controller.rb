@@ -11,9 +11,9 @@ module Api
     #
     # Provides endpoints to list, show, create, update, and delete products,
     # as well as actions for liking, rating, and commenting.
-    class ProductsController < ApplicationController
+    class ProductsController < Api::ApplicationController
       skip_before_action :authenticate_user!, only: %i[index show]
-      load_and_authorize_resource except: %i[index show create]
+      load_and_authorize_resource except: %i[index show]
 
       # GET /api/v1/products
       #
@@ -24,7 +24,7 @@ module Api
       #   `index.json.jbuilder` with a status of `:ok` (200).
       def index
         @products = Services::ProductCachingService.fetch_all(params[:page])
-        @status = :ok
+        bind_data_and_render(nil, 'index')
       end
 
       # GET /api/v1/products/:id
@@ -35,13 +35,7 @@ module Api
       #   `show.json.jbuilder` with a status of `:ok` (200).
       def show
         @product = Services::ProductCachingService.fetch_one(params[:id])
-        unless @product
-          @errors = ['Product not found.']
-          @status = :not_found
-          response.status = @status
-          return
-        end
-        @status = :ok
+        handle_show_response(@product)
       end
 
       # POST /api/v1/products
@@ -53,8 +47,7 @@ module Api
       # @see Services::ProductCreationService.call
       def create
         result = Services::ProductCreationService.call(product_params)
-        @product = result.data[:product]
-        bind_data(result)
+        bind_data_and_render(result, 'show')
       end
 
       # PATCH/PUT /api/v1/products/:id
@@ -66,8 +59,7 @@ module Api
       # @see Services::ProductUpdateService.call
       def update
         result = Services::ProductUpdateService.call(@product, product_params)
-        @product = result.data[:product]
-        bind_data(result)
+        bind_data_and_render(result, 'show')
       end
 
       # DELETE /api/v1/products/:id
@@ -80,7 +72,7 @@ module Api
       # @see Services::ProductDeletionService.call
       def destroy
         result = Services::ProductDeletionService.call(@product)
-        bind_data(result)
+        bind_data_and_render(result, 'show')
       end
 
       # POST /api/v1/products/:id/like
@@ -92,7 +84,7 @@ module Api
       # @see Services::ProductInteractionService#like
       def like
         result = product_interaction_service.like(@product)
-        bind_data(result)
+        bind_data_and_render(result, 'show')
       end
 
       # POST /api/v1/products/:id/rate
@@ -104,7 +96,7 @@ module Api
       # @see Services::ProductInteractionService#rate
       def rate
         result = product_interaction_service.rate(@product, rate_params[:rating], rate_params[:comment])
-        bind_data(result)
+        bind_data_and_render(result, 'show')
       end
 
       # POST /api/v1/products/:id/comment
@@ -116,10 +108,47 @@ module Api
       # @see Services::ProductInteractionService#add_comment
       def comment
         result = product_interaction_service.add_comment(@product, comment_params[:content], comment_params[:parent_id])
-        bind_data(result)
+        bind_data_and_render(result, 'show')
       end
 
       private
+
+      def bind_data_and_render(result, view_name)
+        if result
+          bind_data(result)
+          if @success
+            if @data.key?(:product)
+              @product = @data[:product]
+            elsif @data.key?(:products)
+              @products = @data[:products]
+            end
+            @message = @message
+            render view_name, status: @status
+          else
+            render json: { errors: @errors || [] }, status: @status
+          end
+        else
+          render view_name, status: :ok
+        end
+      end
+
+      def handle_destroy_response(result)
+        bind_data(result)
+        if @success
+          head :no_content
+        else
+          render json: { errors: @errors || [] }, status: @status
+        end
+      end
+
+      def handle_show_response(product)
+        if product
+          @product = product
+          bind_data_and_render(nil, 'show')
+        else
+          render json: { errors: ['Product not found.'] }, status: :not_found
+        end
+      end
 
       # Initializes and returns an instance of ProductInteractionService for the current user.
       # @return [Services::ProductInteractionService] An instance of ProductInteractionService.

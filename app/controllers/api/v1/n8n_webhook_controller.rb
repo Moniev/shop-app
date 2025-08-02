@@ -6,7 +6,7 @@
 # a structured way to handle API requests.
 module Api
   module V1
-    class N8nWebhookController < ApplicationController
+    class N8nWebhookController < Api::ApplicationController
     end
   end
 end

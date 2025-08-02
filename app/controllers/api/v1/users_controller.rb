@@ -10,7 +10,7 @@ module Api
     # Provides endpoints for user registration, profile management, role updates,
     # and action history. It supports authentication and authorization for secure access.
     class UsersController < ApplicationController
-      load_and_authorize_resource except: %i[create me]
+      load_and_authorize_resource except: %i[create me logout]
 
       # POST /api/v1/users
       #
@@ -21,14 +21,7 @@ module Api
       # @see Services::UserCreationService.call
       def create
         result = Services::UserCreationService.call(user_params)
-
-        @user = if result.success?
-                  result.data[:user]
-                else
-                  nil
-                end
-
-        bind_data(result)
+        bind_data_and_render(result, :show)
       end
 
       # GET /api/v1/users/:id
@@ -38,7 +31,7 @@ module Api
       # @return [void] Implicitly renders the `@user` using `show.json.jbuilder` with a
       #   status of `:ok` (200).
       def show
-        @status = :ok
+        bind_data_and_render(nil, :show)
       end
 
       # PATCH/PUT /api/v1/users/:id
@@ -50,8 +43,7 @@ module Api
       # @see Services::UserProfileService#update_profile
       def update
         result = user_profile_service.update_profile(user_params)
-        @user = result.data[:user]
-        bind_data(result)
+        bind_data_and_render(result, :show)
       end
 
       # PATCH /api/v1/users/:id/update_location
@@ -64,7 +56,7 @@ module Api
       def update_location
         result = user_profile_service.update_location(location_params)
         @user.reload if result.success?
-        bind_data(result)
+        bind_data_and_render(result, :show)
       end
 
       # PATCH /api/v1/users/:id/update_details
@@ -77,7 +69,7 @@ module Api
       def update_details
         result = user_profile_service.update_details(user_detail_params)
         @user.reload if result.success?
-        bind_data(result)
+        bind_data_and_render(result, :show)
       end
 
       # PATCH /api/v1/users/:id/update_entrepreneur_details
@@ -90,7 +82,7 @@ module Api
       def update_entrepreneur_details
         result = user_profile_service.update_entrepreneur_details(entrepreneur_detail_params)
         @user.reload if result.success?
-        bind_data(result)
+        bind_data_and_render(result, :show)
       end
 
       # DELETE /api/v1/users/:id
@@ -103,7 +95,7 @@ module Api
       # @see Services::UserProfileService#destroy_user
       def destroy
         result = user_profile_service.destroy_user
-        bind_data(result)
+        handle_destroy_response(result)
       end
 
       # GET /api/v1/users/me
@@ -114,7 +106,7 @@ module Api
       #   `me.json.jbuilder` with a status of `:ok` (200).
       def me
         @user = current_user
-        @status = :ok
+        bind_data_and_render(nil, :show)
       end
 
       # GET /api/v1/users
@@ -126,8 +118,8 @@ module Api
       # @return [void] Sets `@users` for the Jbuilder view, implicitly rendering
       #   `index.json.jbuilder` with a status of `:ok` (200).
       def index
-        @users = User.page(params[:page]).per(25)
-        @status = :ok
+        @users = @users.page(params[:page]).per(25)
+        bind_data_and_render(nil, :index)
       end
 
       # PATCH /api/v1/users/:id/role/update
@@ -141,8 +133,7 @@ module Api
       # @see Services::UserProfileService#update_role
       def role
         result = user_profile_service.update_role(params[:role])
-        @user = result.data[:user]
-        bind_data(result)
+        bind_data_and_render(result, :show)
       end
 
       # POST /api/v1/users/logout
@@ -154,8 +145,9 @@ module Api
       # @see Services::AuthenticationService#blacklist_token (assuming this lives here or a new service)
       def logout
         token = request.headers['Authorization']&.split&.last
+        authorize! :logout, current_user
         result = Services::AuthenticationService.blacklist_token(token)
-        bind_data(result)
+        bind_data_and_render(result)
       end
 
       # GET /api/v1/users/:id/actions
@@ -166,7 +158,7 @@ module Api
       #   `actions.json.jbuilder` with a status of `:ok` (200).
       def actions
         @actions = @user.user_actions.page(params[:page]).per(25)
-        @status = :ok
+        bind_data_and_render(nil, :actions)
       end
 
       private
@@ -211,6 +203,35 @@ module Api
           management_council_members: {},
           decision_makers: {}
         )
+      end
+
+      def bind_data_and_render(result, view_name = nil)
+        if result
+          bind_data(result)
+          if @success
+            @user = @data[:user] if @data.key?(:user)
+            @users = @data[:users] if @data.key?(:users)
+
+            if view_name
+              render view_name, status: @status
+            else
+              render json: { message: @message }, status: @status
+            end
+          else
+            render json: { errors: @errors }, status: @status
+          end
+        else
+          render view_name, status: :ok
+        end
+      end
+
+      def handle_destroy_response(result)
+        bind_data(result)
+        if @success
+          head :no_content
+        else
+          render json: { errors: @errors }, status: @status
+        end
       end
     end
   end

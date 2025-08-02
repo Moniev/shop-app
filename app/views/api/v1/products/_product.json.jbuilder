@@ -6,16 +6,15 @@ json.cache! [
   product.updated_at,
   product.product_photos.maximum(:updated_at) || Time.current,
   product.product_likes.maximum(:updated_at) || Time.current,
-  product.product_comments.maximum(:updated_at) || Time.current
+  product.comments.maximum(:updated_at) || Time.current
 ] do
   json.id product.id
   json.name product.name
   json.description product.description
   json.price product.price
-  json.stock_quantity product.stock_quantity
   json.average_rating product.average_rating if product.respond_to?(:average_rating)
   json.likes_count product.product_likes.count
-  json.comments_count product.product_comments.count
+  json.comments_count product.comments.count
   json.created_at product.created_at
   json.updated_at product.updated_at
 
@@ -27,7 +26,7 @@ json.cache! [
     json.partial! 'api/v1/products/product_like', product_like: like
   end
 
-  json.comments product.product_comments.where(parent_id: nil) do |comment|
+  json.comments product.comments.where(parent_id: nil) do |comment|
     json.partial! 'api/v1/products/product_comment', product_comment: comment
   end
 end

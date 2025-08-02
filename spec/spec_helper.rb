@@ -89,4 +89,8 @@ RSpec.configure do |config|
   #   # test failures related to randomization by passing the same `--seed` value
   #   # as the one that triggered the failure.
   #   Kernel.srand config.seed
+
+  config.before(:each, type: :controller) do
+    allow(Rails.application.config.action_dispatch).to receive(:show_exceptions).and_return(true)
+  end
 end

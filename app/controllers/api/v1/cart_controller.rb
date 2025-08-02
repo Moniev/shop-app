@@ -8,7 +8,7 @@ module Api
     # Provides endpoints for viewing, adding items to, removing items from, and
     # clearing the user's shopping cart. The cart is defined as a collection of `Item`
     # records associated with the current user that are not yet part of an `Order`.
-    class CartController < ApplicationController
+    class CartController < Api::ApplicationController
       authorize_resource class: false
 
       # GET /api/v1/cart

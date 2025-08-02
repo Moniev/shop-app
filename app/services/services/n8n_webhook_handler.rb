@@ -8,6 +8,6 @@
 # or represent a cross-cutting concern. Examples include authentication flows,
 # payment processing, or external API interactions
 module Services
-  class WebhookService
+  class N8nWebhookHandler
   end
 end

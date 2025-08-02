@@ -1,25 +1,25 @@
 # frozen_string_literal: true
 
-json.cache! ['user_me', current_user.id, current_user.updated_at] do
+json.cache! ['user_me', @user, @user.user_detail, @user.user_detail&.locations&.first,
+             @user.user_detail&.entrepreneur_detail] do
   json.user do
-    json.partial! 'api/v1/users/user_data', user: current_user
+    json.partial! 'api/v1/users/user_data', user: @user
 
-    if current_user.user_detail.present?
+    if @user.user_detail.present?
       json.user_detail do
-        json.partial! 'api/v1/user_details/user_detail', user_detail: current_user.user_detail
+        json.partial! 'api/v1/users/user_detail', user_detail: @user.user_detail
       end
-    end
 
-    if current_user.user_detail&.location.present?
-      json.location do
-        json.partial! 'api/v1/locations/location', location: current_user.user_detail.location
+      if @user.user_detail.locations.present?
+        json.location do
+          json.partial! 'api/v1/users/location', location: @user.user_detail.locations.first
+        end
       end
-    end
 
-    if current_user.entrepreneur_detail.present?
-      json.entrepreneur_detail do
-        json.partial! 'api/v1/entrepreneur_details/entrepreneur_detail',
-                      entrepreneur_detail: current_user.entrepreneur_detail
+      if @user.user_detail.entrepreneur_detail.present?
+        json.entrepreneur_detail do
+          json.partial! 'api/v1/users/entrepreneur_details', entrepreneur_detail: @user.user_detail.entrepreneur_detail
+        end
       end
     end
   end

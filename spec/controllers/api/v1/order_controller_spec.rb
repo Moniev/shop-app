@@ -1,0 +1,147 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe Api::V1::OrdersController, type: :controller do
+  render_views
+
+  before do
+    routes.draw do
+      namespace :api do
+        namespace :v1 do
+          resources :orders, only: %i[index show create update destroy] do
+            post 'cancel', on: :member
+            get 'me', on: :collection
+          end
+        end
+      end
+    end
+    allow(controller).to receive(:authenticate_user!).and_return(true)
+  end
+
+  let!(:user) { create(:user, :with_detail, role: :regular) }
+  let!(:admin) { create(:user, :with_detail, role: :admin) }
+  let!(:order) { create(:order, user: user) }
+  let(:order_creation_service) { instance_double(Services::OrderCreationService) }
+  let(:order_management_service) { instance_double(Services::OrderManagementService) }
+
+  before do
+    controller.instance_variable_set(:@order, order)
+
+    allow(Services::OrderCreationService).to receive(:call).and_return(
+      Services::Result.new(success?: true, data: { order: order }, status: :created,
+                           message: 'Order created successfully.')
+    )
+
+    allow(Services::OrderManagementService).to receive(:new).with(order).and_return(order_management_service)
+
+    allow(order_management_service).to receive(:destroy).and_return(
+      Services::Result.new(success?: true, status: :no_content)
+    )
+    allow(order_management_service).to receive(:update).and_return(
+      Services::Result.new(success?: true, data: { order: order }, status: :ok,
+                           message: 'Order updated successfully.')
+    )
+    allow(order_management_service).to receive(:cancel).and_return(
+      Services::Result.new(success?: true, data: { order: order }, status: :ok,
+                           message: 'Order cancelled successfully.')
+    )
+  end
+
+  describe 'GET #index' do
+    context 'as an admin' do
+      before do
+        allow(controller).to receive(:current_user).and_return(admin)
+        allow(Order).to receive(:accessible_by).and_return(Order.all)
+      end
+
+      it 'returns a list of all orders' do
+        get :index, format: :json
+        expect(response).to have_http_status(:ok)
+        json_response = JSON.parse(response.body)
+        expect(json_response['orders'].count).to eq(Order.count)
+      end
+    end
+
+    context 'as a regular user' do
+      before do
+        allow(controller).to receive(:current_user).and_return(user)
+        allow(Order).to receive(:accessible_by).and_return(user.orders)
+      end
+      it "returns a list of the user's own orders" do
+        get :index, format: :json
+        expect(response).to have_http_status(:ok)
+        json_response = JSON.parse(response.body)
+        expect(json_response['orders'].count).to eq(user.orders.count)
+      end
+    end
+  end
+
+  describe 'GET #me' do
+    before do
+      allow(controller).to receive(:current_user).and_return(user)
+    end
+    it "returns a list of the current user's orders" do
+      get :me, format: :json
+      expect(response).to have_http_status(:ok)
+      json_response = JSON.parse(response.body)
+      expect(json_response['orders'].first['id']).to eq(order.id)
+    end
+  end
+
+  describe 'GET #show' do
+    it 'returns a single order' do
+      allow(controller).to receive(:current_user).and_return(user)
+      get :show, params: { id: order.id }, format: :json
+      expect(response).to have_http_status(:ok)
+      json_response = JSON.parse(response.body)
+      expect(json_response['order']['id']).to eq(order.id)
+    end
+  end
+
+  describe 'POST #create' do
+    let(:service_result) { Services::Result.new(success?: true, data: { order: order }, status: :created, message: 'Order created successfully from cart.') }
+    before do
+      allow(controller).to receive(:current_user).and_return(user)
+      allow(Services::OrderCreationService).to receive(:call).and_return(service_result)
+    end
+    it 'creates an order from the cart and returns success' do
+      post :create, format: :json
+      expect(response).to have_http_status(:created)
+      json_response = JSON.parse(response.body)
+      expect(json_response['message']).to eq('Order created successfully from cart.')
+      expect(json_response['order']['id']).to eq(order.id)
+    end
+  end
+
+  describe 'PUT #update' do
+    let(:valid_params) { { order: { status: 'shipped' } } }
+    context 'when the update is successful' do
+      it 'updates the order and returns success' do
+        allow(controller).to receive(:current_user).and_return(admin)
+        put :update, params: { id: order.id }.merge(valid_params), format: :json
+        expect(response).to have_http_status(:ok)
+        json_response = JSON.parse(response.body)
+        expect(json_response['message']).to eq('Order updated successfully.')
+      end
+    end
+  end
+
+  describe 'POST #cancel' do
+    it 'cancels the order and returns success' do
+      allow(controller).to receive(:current_user).and_return(user)
+      post :cancel, params: { id: order.id }, format: :json
+      expect(response).to have_http_status(:ok)
+      json_response = JSON.parse(response.body)
+      expect(json_response['message']).to eq('Order cancelled successfully.')
+    end
+  end
+
+  describe 'DELETE #destroy' do
+    it 'deletes the order and returns no content' do
+      allow(controller).to receive(:current_user).and_return(admin)
+      delete :destroy, params: { id: order.id }, format: :json
+      expect(response).to have_http_status(:no_content)
+    end
+  end
+end

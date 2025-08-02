@@ -10,6 +10,7 @@ module Api
     # for verifying the authenticity of these webhooks before processing them.
     class StripePaymentsWebhookController < ApplicationController
       skip_before_action :authenticate_user!
+
       # POST /api/v1/stripe_payments_webhook/handle
       #
       # Receives and processes a webhook event from Stripe.
@@ -25,21 +26,10 @@ module Api
       def handle
         payload = request.body.read
         sig_header = request.env['HTTP_STRIPE_SIGNATURE']
-        endpoint_secret = Rails.application.credentials.stripe[:webhook_secret]
+        result = Services::StripeWebhookHandlerService.call(payload: payload, sig_header: sig_header)
 
-        verification_result = Services::StripeWebhookVerificationService.verify_and_construct_event(
-          payload: payload,
-          sig_header: sig_header,
-          endpoint_secret: endpoint_secret
-        )
-
-        if verification_result.success?
-          event = verification_result.data[:event]
-          processing_result = Services::StripeWebhookService.handle(event)
-          bind_data(processing_result)
-        else
-          bind_data(verification_result)
-        end
+        bind_data(result)
+        render :handle, status: @status
       end
     end
   end

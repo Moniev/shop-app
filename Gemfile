@@ -62,6 +62,6 @@ end
 gem 'rubocop', '~> 1.76'
 gem 'rubocop-rails'
 
-gem 'cancancan'
+gem 'cancancan', '~> 3.4'
 gem 'redis'
 gem 'stripe'

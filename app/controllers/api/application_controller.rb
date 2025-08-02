@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'jwt'
+require 'cancan'
+
 # Namespace for API resources and controllers.
 module Api
   # Base controller for the API.
@@ -9,6 +11,7 @@ module Api
   # authorization, global exception handling, and setting the default response format.
   class ApplicationController < ActionController::API
     around_action :measure_execution_time
+    around_action :handle_exceptions
     before_action :set_default_response_format
     before_action :authenticate_user!
     helper_method :combined_fragment_cache_key
@@ -27,35 +30,20 @@ module Api
       Rails.logger.info "Action #{action_name} from controller #{controller_name} took #{duration.round(2)} seconds."
     end
 
-    rescue_from ActiveRecord::RecordNotFound do |exception|
-      Rails.logger.warn "RecordNotFound: #{exception.message}"
-      render json: { errors: [exception.message], message: 'Resource not found.' }, status: :not_found
-    end
-
-    rescue_from ActiveRecord::RecordInvalid do |exception|
-      Rails.logger.warn "RecordInvalid: #{exception.record.errors.full_messages.join(', ')}"
-      render json: { errors: exception.record.errors.full_messages, message: 'Validation failed.' },
-             status: :unprocessable_content
-    end
-
-    rescue_from ArgumentError, BadRequest do |exception|
-      Rails.logger.warn "BadRequest/ArgumentError: #{exception.message}"
-      render json: { errors: [exception.message], message: 'Bad request parameters.' }, status: :bad_request
-    end
-
-    rescue_from Unauthorized do |exception|
-      Rails.logger.warn "Unauthorized access: #{exception.message}"
-      render json: { errors: [exception.message], message: 'Authentication required or invalid credentials.' },
-             status: :unauthorized
-    end
-
-    rescue_from Forbidden do |exception|
-      Rails.logger.warn "Forbidden access: #{exception.message}"
-      render json: { errors: [exception.message], message: 'Access denied.' }, status: :forbidden
-    end
-
-    rescue_from StandardError do |exception|
-      Rails.logger.error "Unhandled exception: #{exception.message}\n#{exception.backtrace.join("\n")}"
+    def handle_exceptions
+      yield
+    rescue CanCan::AccessDenied => e
+      render json: { error: 'Not Authorized', message: e.message }, status: :forbidden
+    rescue Stripe::SignatureVerificationError => e
+      render json: { errors: [e.message], message: 'Stripe signature verification failed.' }, status: :bad_request
+    rescue ActiveRecord::RecordNotFound => e
+      render json: { errors: [e.message], message: 'Resource not found.' }, status: :not_found
+    rescue ActiveRecord::RecordInvalid => e
+      render json: { errors: e.record.errors.full_messages, message: 'Validation failed.' },
+             status: :unprocessable_entity
+    rescue ArgumentError => e
+      render json: { errors: [e.message], message: 'Bad request parameters.' }, status: :bad_request
+    rescue StandardError => e
       render json: { errors: ['An unexpected error occurred.'], message: 'Internal server error.' },
              status: :internal_server_error
     end

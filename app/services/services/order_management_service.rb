@@ -50,6 +50,15 @@ module Services
                            status: :internal_server_error, message: 'An unexpected error occurred.')
     end
 
+    def destroy
+      @order.destroy
+      Services::Result.new(success?: true, status: :no_content)
+    rescue StandardError => e
+      Rails.logger.error("Failed to destroy order ID #{@order.id}: #{e.message}")
+      Services::Result.new(success?: false, errors: ['An unexpected error occurred while destroying the order.'],
+                           status: :internal_server_error, message: 'An unexpected error occurred.')
+    end
+
     def mark_as_paid
       if @order.update(payment_status: :paid)
         Services::Result.new(success?: true, data: { order: @order }, status: :ok, message: 'Order marked as paid.')
@@ -87,7 +96,7 @@ module Services
         item = @order.items.find_or_initialize_by(product: product)
         item.price_at_purchase = product.price if item.new_record?
         item.quantity = item.quantity + quantity.to_i
-        
+
         item.save!
         @order.reload
         @order.save!

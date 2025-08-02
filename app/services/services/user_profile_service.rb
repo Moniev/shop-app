@@ -21,10 +21,6 @@ module Services
         Services::Result.new(success?: false, errors: @user.errors.full_messages, status: :unprocessable_entity,
                              message: 'Profile update failed.')
       end
-    rescue StandardError => e
-      Rails.logger.error("User profile update failed for user #{@user.id}: #{e.message}")
-      Services::Result.new(success?: false, errors: ['An unexpected error occurred during profile update.'],
-                           status: :internal_server_error, message: 'An unexpected error occurred.')
     end
 
     def update_location(location_params)
@@ -38,10 +34,6 @@ module Services
         Services::Result.new(success?: false, errors: location.errors.full_messages,
                              status: :unprocessable_entity, message: 'Location update failed.')
       end
-    rescue StandardError => e
-      Rails.logger.error("User location update failed for user #{@user.id}: #{e.message}")
-      Services::Result.new(success?: false, errors: ['An unexpected error occurred during location update.'],
-                           status: :internal_server_error, message: 'An unexpected error occurred.')
     end
 
     def update_details(user_detail_params)
@@ -54,10 +46,6 @@ module Services
         Services::Result.new(success?: false, errors: user_detail.errors.full_messages,
                              status: :unprocessable_entity, message: 'Personal details update failed.')
       end
-    rescue StandardError => e
-      Rails.logger.error("User details update failed for user #{@user.id}: #{e.message}")
-      Services::Result.new(success?: false, errors: ['An unexpected error occurred during details update.'],
-                           status: :internal_server_error, message: 'An unexpected error occurred.')
     end
 
     def update_entrepreneur_details(entrepreneur_detail_params)
@@ -80,10 +68,6 @@ module Services
         Services::Result.new(success?: false, errors: entrepreneur_detail.errors.full_messages,
                              status: :unprocessable_entity, message: 'Entrepreneur details update failed.')
       end
-    rescue StandardError => e
-      Rails.logger.error("Entrepreneur details update failed for user #{@user.id}: #{e.message}")
-      Services::Result.new(success?: false,
-                           errors: ['An unexpected error occurred during entrepreneur details update.'], status: :internal_server_error, message: 'An unexpected error occurred.')
     end
 
     def destroy_user
@@ -93,14 +77,6 @@ module Services
         Services::Result.new(success?: false, errors: @user.errors.full_messages, status: :unprocessable_entity,
                              message: 'Failed to delete user account.')
       end
-    rescue ActiveRecord::RecordNotDestroyed => e
-      Rails.logger.error("User deletion failed for user #{@user.id}: #{e.message}")
-      Services::Result.new(success?: false, errors: @user.errors.full_messages, status: :unprocessable_entity,
-                           message: 'Failed to delete user account due to dependencies.')
-    rescue StandardError => e
-      Rails.logger.error("Unexpected error during user deletion for user #{@user.id}: #{e.message}")
-      Services::Result.new(success?: false, errors: ['An unexpected error occurred during user deletion.'],
-                           status: :internal_server_error, message: 'An unexpected error occurred.')
     end
 
     def update_role(new_role)

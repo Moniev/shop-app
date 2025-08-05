@@ -33,13 +33,13 @@ group :development, :test do
   gem 'brakeman', require: false
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
-  gem 'rubocop-rails-omakase', require: false
-
   gem 'jwt'
+  gem 'prometheus-client-mmap'
   gem 'rspec-rails'
   gem 'rswag'
   gem 'rswag-api'
   gem 'rswag-ui'
+  gem 'rubocop-rails-omakase', require: false
 end
 
 group :test do
@@ -47,6 +47,7 @@ group :test do
   gem 'database_cleaner-active_record'
   gem 'factory_bot_rails'
   gem 'faker'
+  gem 'prometheus-client-mmap'
   gem 'rspec'
   gem 'rspec-activemodel-mocks'
   gem 'rspec-its'

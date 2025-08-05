@@ -24,6 +24,8 @@ class Order < ApplicationRecord
   scope :pending_payment, -> { where(payment_status: :unpaid) }
 
   def self.for_user(user)
+    return none unless user
+
     if user.admin?
       includes(:user, :items).order(created_at: :desc)
     else

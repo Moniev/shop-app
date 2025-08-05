@@ -10,6 +10,7 @@ module Api
     # Provides endpoints for user registration, profile management, role updates,
     # and action history. It supports authentication and authorization for secure access.
     class UsersController < ApplicationController
+      skip_before_action :authenticate_user!, only: [:create]
       load_and_authorize_resource except: %i[create me logout]
 
       # POST /api/v1/users

@@ -1,290 +1,201 @@
 # frozen_string_literal: true
 
-require 'swagger_helper'
+require 'rails_helper'
 
-RSpec.describe 'API V1 Users', type: :request do
-  let(:test_user) { create(:user) }
-  let(:Authorization) { "Bearer #{generate_jwt_for(test_user)}" }
+RSpec.describe 'Api::V1::Users', type: :request do
+  let(:json) { JSON.parse(response.body) }
 
-  path '/api/v1/users' do
-    get('Lists all users (Admin only)') do
-      tags 'Users'
-      produces 'application/json'
-      security [Bearer: []]
-      parameter name: :page, in: :query, type: :integer, required: false
+  let(:admin) { create(:user, :admin, :with_detail) }
+  let(:user) { create(:user, :regular, :with_detail) }
+  let(:other_user) { create(:user, :regular, :with_detail) }
 
-      response(200, 'successful') do
-        schema type: :array, items: { '$ref' => '#/components/schemas/User' }
-        run_test!
+  let(:admin_headers) do
+    {
+      'Authorization' => "Bearer #{token_for(admin)}",
+      'Content-Type' => 'application/json',
+      'Accept' => 'application/json'
+    }
+  end
+  let(:user_headers) do
+    {
+      'Authorization' => "Bearer #{token_for(user)}",
+      'Content-Type' => 'application/json',
+      'Accept' => 'application/json'
+    }
+  end
+  let(:public_headers) { { 'Content-Type' => 'application/json', 'Accept' => 'application/json' } }
+
+  def token_for(user)
+    Services::BearerService.encode({ user_id: user.id }).data[:token]
+  end
+
+  describe 'POST /api/v1/users' do
+    let(:valid_params) { { user: attributes_for(:user) }.to_json }
+
+    context 'when creation is successful' do
+      before do
+        successful_result = Services::Result.new(success?: true, data: { user: user }, status: :created)
+        allow(Services::UserCreationService).to receive(:call).and_return(successful_result)
+      end
+
+      it 'creates a user and returns a 201 status' do
+        post '/api/v1/users', params: valid_params, headers: public_headers
+        expect(response).to have_http_status(:created)
       end
     end
 
-    post('Creates a new user (registration)') do
-      tags 'Users'
-      consumes 'application/json'
-      produces 'application/json'
-
-      parameter name: :user_params, in: :body, schema: {
-        type: :object,
-        properties: {
-          user: {
-            type: :object,
-            properties: {
-              mail: { type: :string, format: :email, example: 'newuser@example.com' },
-              password: { type: :string, format: :password, example: 'password123' },
-              password_confirmation: { type: :string, format: :password, example: 'password123' },
-              phone: { type: :string, example: '123456789', nullable: true },
-              user_detail_attributes: {
-                type: :object,
-                properties: {
-                  name: { type: :string, example: 'John_Doe123!' },
-                  first_name: { type: :string, example: 'John' },
-                  last_name: { type: :string, example: 'Doe' }
-                }
-              }
-            },
-            required: %w[mail password password_confirmation]
-          }
-        },
-        required: ['user']
-      }
-
-      response(201, 'user created') do
-        schema '$ref' => '#/components/schemas/User'
-        let(:user_params) { { user: { mail: 'test@test.com', password: 'p', password_confirmation: 'p' } } }
-        run_test!
+    context 'when creation fails' do
+      before do
+        failed_result = Services::Result.new(success?: false, errors: ['Email has already been taken'],
+                                             status: :unprocessable_content)
+        allow(Services::UserCreationService).to receive(:call).and_return(failed_result)
       end
 
-      response(422, 'unprocessable entity') do
-        let(:user_params) { { user: { mail: 'invalid', password: 'p', password_confirmation: 'p' } } }
-        run_test!
+      it 'returns a 422 status with errors' do
+        post '/api/v1/users', params: valid_params, headers: public_headers
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(json['errors']).to include('Email has already been taken')
       end
     end
   end
 
-  path '/api/v1/users/me' do
-    get('Shows the current user profile') do
-      tags 'Users'
-      produces 'application/json'
-      security [Bearer: []]
+  describe 'GET /api/v1/users' do
+    context 'as an admin' do
+      it 'returns a paginated list of all users' do
+        get '/api/v1/users', headers: admin_headers
+        expect(response).to have_http_status(:ok)
+        expect(json).to have_key('users')
+        expect(json).to have_key('meta')
+      end
+    end
 
-      response(200, 'successful') do
-        schema '$ref' => '#/components/schemas/User'
-        run_test!
+    context 'as a regular user' do
+      it 'is forbidden' do
+        get '/api/v1/users', headers: user_headers
+        expect(response).to have_http_status(:forbidden)
       end
     end
   end
 
-  path '/api/v1/users/logout' do
-    post('Logs out the current user') do
-      tags 'Users'
-      produces 'application/json'
-      security [Bearer: []]
+  describe 'GET /api/v1/users/me' do
+    it 'returns the current user profile' do
+      get '/api/v1/users/me', headers: user_headers
+      expect(response).to have_http_status(:ok)
+      expect(json['user']['id']).to eq(user.id)
+    end
 
-      response(200, 'successful') do
-        schema type: :object, properties: { message: { type: :string, example: 'Logged out' } }
-        run_test!
-      end
+    it 'returns unauthorized if no token is provided' do
+      get '/api/v1/users/me'
+      expect(response).to have_http_status(:unauthorized)
     end
   end
 
-  path '/api/v1/users/{id}' do
-    parameter name: 'id', in: :path, type: :string, description: 'User ID'
+  describe 'POST /api/v1/users/logout' do
+    it 'blacklists the token and returns a success message' do
+      successful_result = Services::Result.new(success?: true, message: 'Successfully logged out', status: :ok)
+      allow(Services::AuthenticationService).to receive(:blacklist_token).and_return(successful_result)
 
-    get('Shows a single user') do
-      tags 'Users'
-      produces 'application/json'
-      security [Bearer: []]
-
-      response(200, 'successful') do
-        schema '$ref' => '#/components/schemas/User'
-        let(:id) { '123' }
-        run_test!
-      end
-    end
-
-    patch('Updates a user') do
-      tags 'Users'
-      consumes 'application/json'
-      produces 'application/json'
-      security [Bearer: []]
-      parameter name: :user_params, in: :body, schema: {
-        type: :object,
-        properties: {
-          user: {
-            type: :object,
-            properties: {
-              mail: { type: :string, format: :email },
-              password: { type: :string, format: :password },
-              password_confirmation: { type: :string, format: :password },
-              phone: { type: :string },
-              user_detail_attributes: {
-                type: :object,
-                properties: {
-                  first_name: { type: :string },
-                  last_name: { type: :string }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      response(200, 'successful') do
-        let(:id) { '123' }
-        let(:user_params) { { user: { phone: '555444333' } } }
-        run_test!
-      end
-    end
-
-    delete('Deletes a user') do
-      tags 'Users'
-      security [Bearer: []]
-
-      response(204, 'no content') do
-        let(:id) { '123' }
-        run_test!
-      end
+      post '/api/v1/users/logout', headers: user_headers
+      expect(response).to have_http_status(:ok)
+      expect(json['message']).to eq('Successfully logged out')
     end
   end
 
-  path '/api/v1/users/{id}/role/update' do
-    patch('Updates a user role (Admin only)') do
-      tags 'Users'
-      consumes 'application/json'
-      produces 'application/json'
-      security [Bearer: []]
-      parameter name: 'id', in: :path, type: :string, description: 'User ID'
-      parameter name: :role_params, in: :body, schema: {
-        type: :object,
-        properties: { role: { type: :string, enum: %w[regular moderator admin] } },
-        required: ['role']
-      }
+  describe 'Member actions for /api/v1/users/:id' do
+    let(:user_profile_service) { instance_double(Services::UserProfileService) }
 
-      response(200, 'successful') do
-        let(:id) { '123' }
-        let(:role_params) { { role: 'moderator' } }
-        run_test!
-      end
+    before do
+      allow(Services::UserProfileService).to receive(:new).with(an_instance_of(User)).and_return(user_profile_service)
     end
-  end
 
-  path '/api/v1/users/{id}/actions' do
-    get("Lists a user's actions") do
-      tags 'Users'
-      produces 'application/json'
-      security [Bearer: []]
-      parameter name: 'id', in: :path, type: :string, description: 'User ID'
-      parameter name: :page, in: :query, type: :integer, required: false
-
-      response(200, 'successful') do
-        let(:id) { '123' }
-        run_test!
-      end
-    end
-  end
-
-  path '/api/v1/users/{id}/update_location' do
-    patch('Updates user location details') do
-      tags 'Users'
-      consumes 'application/json'
-      security [Bearer: []]
-      parameter name: 'id', in: :path, type: :string, description: 'User ID'
-      parameter name: :location_params, in: :body, schema: {
-        type: :object,
-        properties: {
-          location: {
-            type: :object,
-            properties: {
-              country: { type: :string, example: 'Poland' },
-              province: { type: :string, example: 'Masovian' },
-              city: { type: :string, example: 'Warsaw' },
-              postal_code: { type: :string, example: '00-001' },
-              street: { type: :string, example: 'Main Street' },
-              building_number: { type: :integer, example: 10 },
-              apartment_number: { type: :integer, example: 5, nullable: true }
-            },
-            required: %w[country province city postal_code]
-          }
-        },
-        required: ['location']
-      }
-
-      response(200, 'successful') do
-        let(:id) { '123' }
-        let(:location_params) do
-          { location: { country: 'Poland', province: 'Lesser Poland', city: 'Krakow', postal_code: '30-001' } }
+    describe 'GET /api/v1/users/:id' do
+      context 'as the user themselves' do
+        it 'returns their own profile' do
+          get "/api/v1/users/#{user.id}", headers: user_headers
+          expect(response).to have_http_status(:ok)
+          expect(json['user']['id']).to eq(user.id)
         end
-        run_test!
+      end
+
+      context 'as another regular user' do
+        it 'is forbidden' do
+          get "/api/v1/users/#{other_user.id}", headers: user_headers
+          expect(response).to have_http_status(:forbidden)
+        end
+      end
+
+      context 'as an admin' do
+        it "can view another user's profile" do
+          get "/api/v1/users/#{user.id}", headers: admin_headers
+          expect(response).to have_http_status(:ok)
+        end
       end
     end
-  end
 
-  path '/api/v1/users/{id}/update_details' do
-    patch('Updates user personal details') do
-      tags 'Users'
-      consumes 'application/json'
-      security [Bearer: []]
-      parameter name: 'id', in: :path, type: :string, description: 'User ID'
-      parameter name: :details_params, in: :body, schema: {
-        type: :object,
-        properties: {
-          user_detail: {
-            type: :object,
-            properties: {
-              first_name: { type: :string, example: 'John' },
-              last_name: { type: :string, example: 'Doe' },
-              name: { type: :string, example: 'John Doe' }
-            }
-          }
-        },
-        required: ['user_detail']
-      }
+    describe 'PATCH /api/v1/users/:id' do
+      let(:update_params) { { user: { user_detail_attributes: { first_name: 'Jane' } } }.to_json }
 
-      response(200, 'successful') do
-        let(:id) { '123' }
-        let(:details_params) { { user_detail: { first_name: 'Jane' } } }
-        run_test!
+      context 'as the user themselves' do
+        it 'updates their profile' do
+          successful_result = Services::Result.new(success?: true, data: { user: user }, status: :ok)
+          allow(user_profile_service).to receive(:update_profile).and_return(successful_result)
+
+          patch "/api/v1/users/#{user.id}", headers: user_headers, params: update_params
+          expect(response).to have_http_status(:ok)
+        end
+      end
+
+      context 'as an admin' do
+        it "updates another user's profile" do
+          successful_result = Services::Result.new(success?: true, data: { user: user }, status: :ok)
+          allow(user_profile_service).to receive(:update_profile).and_return(successful_result)
+
+          patch "/api/v1/users/#{user.id}", headers: admin_headers, params: update_params
+          expect(response).to have_http_status(:ok)
+        end
       end
     end
-  end
 
-  path '/api/v1/users/{id}/update_entrepreneur_details' do
-    patch('Updates user entrepreneur details') do
-      tags 'Users'
-      consumes 'application/json'
-      security [Bearer: []]
-      parameter name: 'id', in: :path, type: :string, description: 'User ID'
-      parameter name: :entrepreneur_params, in: :body, schema: {
-        type: :object,
-        properties: {
-          entrepreneur_detail: {
-            type: :object,
-            properties: {
-              business_name: { type: :string },
-              nip: { type: :string },
-              krs: { type: :string },
-              description: { type: :string },
-              offer: { type: :string },
-              income: { type: :number, format: :float },
-              costs: { type: :number, format: :float },
-              funding_capital: { type: :number, format: :float },
-              industry: { type: :string },
-              business_phone_number: { type: :string },
-              business_mail: { type: :string, format: :email },
-              website_address: { type: :string, format: :uri },
-              management_council_members: { type: :object, properties: {} },
-              decision_makers: { type: :object, properties: {} }
-            }
-          }
-        },
-        required: ['entrepreneur_detail']
-      }
+    describe 'PATCH /api/v1/users/:id/role/update' do
+      let(:role_params) { { role: 'moderator' }.to_json }
 
-      response(200, 'successful') do
-        let(:id) { '123' }
-        let(:entrepreneur_params) { { entrepreneur_detail: { business_name: 'New Business Inc.' } } }
-        run_test!
+      context 'as an admin' do
+        it "updates a user's role" do
+          successful_result = Services::Result.new(success?: true, data: { user: user }, status: :ok)
+          allow(user_profile_service).to receive(:update_role).with('moderator').and_return(successful_result)
+
+          patch "/api/v1/users/#{user.id}/role/update", headers: admin_headers, params: role_params
+          expect(response).to have_http_status(:ok)
+        end
+      end
+
+      context 'as a regular user' do
+        it 'is forbidden' do
+          patch "/api/v1/users/#{user.id}/role/update", headers: user_headers, params: role_params
+          expect(response).to have_http_status(:forbidden)
+        end
+      end
+    end
+
+    describe 'DELETE /api/v1/users/:id' do
+      context 'as the user themselves' do
+        it 'deletes their own account' do
+          successful_result = Services::Result.new(success?: true, status: :no_content)
+          allow(user_profile_service).to receive(:destroy_user).and_return(successful_result)
+
+          delete "/api/v1/users/#{user.id}", headers: user_headers
+          expect(response).to have_http_status(:no_content)
+        end
+      end
+
+      context 'as an admin' do
+        it "deletes another user's account" do
+          successful_result = Services::Result.new(success?: true, status: :no_content)
+          allow(user_profile_service).to receive(:destroy_user).and_return(successful_result)
+
+          delete "/api/v1/users/#{user.id}", headers: admin_headers
+          expect(response).to have_http_status(:no_content)
+        end
       end
     end
   end

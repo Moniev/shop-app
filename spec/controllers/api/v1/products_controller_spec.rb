@@ -92,6 +92,8 @@ RSpec.describe Api::V1::ProductsController, type: :controller do
     end
 
     it 'returns a paginated list of products' do
+      products_relation = Product.where(id: product.id)
+      allow(Services::ProductCachingService).to receive(:fetch_all).and_return(products_relation)
       get :index, format: :json
       expect(response).to have_http_status(:ok)
       json_response = JSON.parse(response.body)

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Rack::Attack
+  self.enabled = false if Rails.env.test?
   cache.store = ActiveSupport::Cache::RedisCacheStore.new(url: ENV['REDIS_URL'])
 
   blocklist('fail2ban/pentesters') do |req|
@@ -18,7 +19,10 @@ class Rack::Attack
   end
 
   throttle('logins/email+ip', limit: 6, period: 60) do |req|
-    [req.params['user']['email'].to_s.downcase.gsub(/\s+/, ''), req.ip] if req.path == '/api/v1/auth/login' && req.post?
+    if req.path == '/api/v1/auth/login' && req.post?
+      [req.params['user']['email'].to_s.downcase.gsub(/\s+/, ''),
+       req.ip]
+    end
   end
 
   throttle('2fa/ip', limit: 5, period: 60) do |req|

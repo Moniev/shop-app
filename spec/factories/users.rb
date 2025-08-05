@@ -86,6 +86,7 @@ FactoryBot.define do
   factory :verification_code do
     user
     code { SecureRandom.hex(16) }
+    expires_at { 15.minutes.from_now }
   end
 
   factory :second_factor_code do
@@ -97,6 +98,7 @@ FactoryBot.define do
   factory :reset_code do
     user
     code { SecureRandom.hex(16) }
+    expires_at { 15.minutes.from_now }
   end
 
   factory :blacklisted_token do

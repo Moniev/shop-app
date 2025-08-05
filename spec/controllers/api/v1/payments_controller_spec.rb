@@ -47,15 +47,11 @@ RSpec.describe Api::V1::PaymentsController, type: :controller do
     context 'as a regular user' do
       before do
         allow(controller).to receive(:current_user).and_return(user)
-        user_payments = Payment.where(order_id: user.order_ids)
-        allow(Payment).to receive(:accessible_by).and_return(user_payments)
       end
 
-      it "returns a list of the user's own payments" do
+      it 'is forbidden' do
         get :index, format: :json
-        expect(response).to have_http_status(:ok)
-        json_response = JSON.parse(response.body)
-        expect(json_response['payments'].count).to eq(user.orders.count)
+        expect(response).to have_http_status(:forbidden)
       end
     end
   end

@@ -1,86 +1,142 @@
 # frozen_string_literal: true
 
-require 'swagger_helper'
+require 'rails_helper'
 
-RSpec.describe 'API V1 Payments', type: :request do
-  let(:test_user) { create(:user) }
-  let(:Authorization) { "Bearer #{generate_jwt_for(test_user)}" }
+RSpec.describe 'Api::V1::Payments', type: :request do
+  let(:json) { JSON.parse(response.body) }
 
-  path '/api/v1/payments' do
-    get('Lists all payments (Admin only)') do
-      tags 'Payments'
-      produces 'application/json'
-      security [Bearer: []]
+  let(:admin) { create(:user, :admin, :with_detail) }
+  let(:user) { create(:user, :with_detail, :regular) }
+  let(:other_user) { create(:user, :with_detail, :regular) }
+  let!(:user_order) { create(:order, user: user) }
+  let!(:other_user_order) { create(:order, user: other_user) }
+  let!(:user_payment) { create(:payment, order: user_order) }
+  let!(:other_user_payment) { create(:payment, order: other_user_order) }
+  let(:admin_headers) do
+    {
+      'Authorization' => "Bearer #{token_for(admin)}",
+      'Content-Type' => 'application/json',
+      'Accept' => 'application/json'
+    }
+  end
+  let(:user_headers) do
+    {
+      'Authorization' => "Bearer #{token_for(user)}",
+      'Content-Type' => 'application/json',
+      'Accept' => 'application/json'
+    }
+  end
 
-      response(200, 'successful') do
-        schema type: :array, items: { '$ref' => '#/components/schemas/Payment' }
-        run_test!
-      end
+  def token_for(user)
+    Services::BearerService.encode({ user_id: user.id }).data[:token]
+  end
 
-      response(401, 'unauthorized') do
-        run_test!
-      end
-
-      response(403, 'forbidden') do
-        run_test!
+  describe 'GET /api/v1/payments' do
+    context 'as an admin' do
+      it 'returns all payments' do
+        get '/api/v1/payments', headers: admin_headers
+        expect(response).to have_http_status(:ok)
+        expect(json['payments'].size).to eq(Payment.count)
       end
     end
 
-    post('Creates a new payment') do
-      tags 'Payments'
-      consumes 'application/json'
-      produces 'application/json'
-      security [Bearer: []]
-
-      parameter name: :payment_params, in: :body, schema: {
-        type: :object,
-        properties: {
-          payment: {
-            type: :object,
-            properties: {
-              order_id: { type: :integer, example: 1 },
-              stripe_token: { type: :string, example: 'tok_visa' }
-            },
-            required: %w[order_id stripe_token]
-          }
-        },
-        required: ['payment']
-      }
-
-      response(201, 'payment created') do
-        schema '$ref' => '#/components/schemas/Payment'
-        let(:payment_params) { { payment: { order_id: 1, stripe_token: 'tok_visa' } } }
-        run_test!
+    context 'as a regular user' do
+      it 'is forbidden' do
+        get '/api/v1/payments', headers: user_headers
+        expect(response).to have_http_status(:forbidden)
       end
+    end
 
-      response(404, 'order not found') do
-        let(:payment_params) { { payment: { order_id: 999, stripe_token: 'tok_visa' } } }
-        run_test!
-      end
-
-      response(422, 'unprocessable entity (e.g., order already paid)') do
-        let(:payment_params) { { payment: { order_id: 1, stripe_token: 'tok_visa' } } }
-        run_test!
+    context 'when unauthenticated' do
+      it 'returns unauthorized' do
+        get '/api/v1/payments'
+        expect(response).to have_http_status(:unauthorized)
       end
     end
   end
 
-  path '/api/v1/payments/{id}' do
-    parameter name: 'id', in: :path, type: :string, description: 'Payment ID'
+  describe 'GET /api/v1/payments/:id' do
+    context 'as an admin' do
+      it "can view another user's payment" do
+        get "/api/v1/payments/#{user_payment.id}", headers: admin_headers
+        expect(response).to have_http_status(:ok)
+        expect(json['payment']['id']).to eq(user_payment.id)
+      end
+    end
 
-    get('Shows a single payment') do
-      tags 'Payments'
-      produces 'application/json'
-      security [Bearer: []]
+    context 'as the owning user' do
+      it 'can view their own payment' do
+        get "/api/v1/payments/#{user_payment.id}", headers: user_headers
+        expect(response).to have_http_status(:ok)
+        expect(json['payment']['id']).to eq(user_payment.id)
+      end
+    end
 
-      response(200, 'successful') do
-        schema '$ref' => '#/components/schemas/Payment'
-        let(:id) { '123' }
-        run_test!
+    context 'as a non-owning user' do
+      it "is forbidden from viewing another user's payment" do
+        get "/api/v1/payments/#{other_user_payment.id}", headers: user_headers
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context 'when unauthenticated' do
+      it 'returns unauthorized' do
+        get "/api/v1/payments/#{user_payment.id}"
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
+
+  describe 'POST /api/v1/payments' do
+    let(:valid_params) { { payment: { order_id: user_order.id, stripe_token: 'tok_visa' } }.to_json }
+
+    context 'when creation is successful' do
+      before do
+        successful_result = Services::Result.new(success?: true, data: { payment: user_payment }, status: :created)
+        allow(Services::PaymentCreationService).to receive(:call).and_return(successful_result)
       end
 
-      response(404, 'not found') do
-        run_test!
+      it 'creates a payment and returns a 201 status' do
+        post '/api/v1/payments', headers: user_headers, params: valid_params
+        expect(response).to have_http_status(:created)
+        expect(json['payment']['id']).to eq(user_payment.id)
+      end
+    end
+
+    context 'when creation fails due to a processing error' do
+      before do
+        failed_result = Services::Result.new(success?: false, errors: ['Your card was declined.'],
+                                             status: :unprocessable_content)
+        allow(Services::PaymentCreationService).to receive(:call).and_return(failed_result)
+      end
+
+      it 'returns a 422 status with errors' do
+        post '/api/v1/payments', headers: user_headers, params: valid_params
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(json['errors']).to include('Your card was declined.')
+      end
+    end
+
+    context 'when a user tries to pay for an order they do not own' do
+      let(:unauthorized_params) { { payment: { order_id: other_user_order.id, stripe_token: 'tok_visa' } }.to_json }
+      before do
+        forbidden_result = Services::Result.new(success?: false,
+                                                errors: ['You are not authorized to pay for this order.'], status: :forbidden)
+        allow(Services::PaymentCreationService).to receive(:call)
+          .with(hash_including(user: user, order_id: other_user_order.id))
+          .and_return(forbidden_result)
+      end
+
+      it 'is forbidden' do
+        post '/api/v1/payments', headers: user_headers, params: unauthorized_params
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context 'when unauthenticated' do
+      it 'returns unauthorized' do
+        post '/api/v1/payments', params: valid_params
+        expect(response).to have_http_status(:unauthorized)
       end
     end
   end

@@ -34,7 +34,7 @@ module Services
 
       begin
         redis_key = "jwt_status:#{token}"
-        redis.set(redis_key, 'active', ex: TOKEN_LIFETIME)
+        redis.with { |conn| conn.set(redis_key, 'active', ex: TOKEN_LIFETIME) }
         Services::Result.new(
           success?: true,
           data: { token: token },
@@ -98,7 +98,7 @@ module Services
 
       begin
         redis_key = "jwt_status:#{token}"
-        redis.set(redis_key, 'blacklisted', ex: TOKEN_LIFETIME)
+        redis.with { |conn| conn.set(redis_key, 'blacklisted', ex: TOKEN_LIFETIME) }
         Services::Result.new(
           success?: true,
           status: :ok,
@@ -145,7 +145,7 @@ module Services
     def self.blacklisted?(token)
       redis_key = "jwt_status:#{token}"
       begin
-        status = redis.get(redis_key)
+        status = redis.with { |conn| conn.get(redis_key) }
         is_blacklisted = (status == 'blacklisted')
         Services::Result.new(
           success?: true,

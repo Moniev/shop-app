@@ -32,7 +32,7 @@ class Ability
       can :manage, Comment
     elsif user.regular?
       can :read, [Product, Comment, Item]
-      can :read, Payment, order: { user_id: user.id }
+      can :show, Payment, order: { user_id: user.id }
       cannot :index, User unless user.admin?
     end
   end

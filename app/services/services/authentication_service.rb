@@ -75,8 +75,9 @@ module Services
       redis_key = "user:#{user.id}:2fa_code"
 
       begin
-        if BearerService.redis.get(redis_key) == code
-          BearerService.redis.del(redis_key)
+        if BearerService.redis.with { |conn| conn.get(redis_key) } == code
+          code_from_redis_matches = true
+          BearerService.redis.with { |conn| conn.del(redis_key) }
           user.second_factor_code&.destroy
           token_result = BearerService.encode({ user_id: user.id })
           return Result.new(
@@ -137,7 +138,7 @@ module Services
       expires_at = 15.minutes.from_now
 
       begin
-        BearerService.redis.set(redis_key, code, ex: 15.minutes.to_i)
+        BearerService.redis.with { |conn| conn.set(redis_key, code, ex: 15.minutes.to_i) }
       rescue Redis::CannotConnectError => e
         Rails.logger.error("Redis error during 2FA code send for user #{user.id}: #{e.message}. Falling back to DB.")
         user.second_factor_code&.destroy

@@ -1,95 +1,94 @@
-require 'swagger_helper'
+# frozen_string_literal: true
 
-RSpec.describe 'API V1 Cart', type: :request do
-  let(:test_user) { create(:user) }
-  let(:Authorization) { "Bearer #{generate_jwt_for(test_user)}" }
+require 'rails_helper'
 
-  path '/api/v1/cart' do
-    get("Shows the current user's cart") do
-      tags 'Cart'
-      produces 'application/json'
-      security [Bearer: []]
+RSpec.describe 'Api::V1::Carts', type: :request do
+  let(:json) { JSON.parse(response.body) }
+  let!(:user) { create(:user, :with_detail) }
+  let!(:product) { create(:product, price: 100.0) }
+  let(:auth_headers) do
+    token_result = Services::BearerService.encode({ user_id: user.id })
+    { 'Authorization' => "Bearer #{token_result.data[:token]}" }
+  end
 
-      response(200, 'successful') do
-        schema '$ref' => '#/components/schemas/Cart'
-        run_test!
+  describe 'GET /api/v1/cart' do
+    context 'when user is authenticated and cart is not empty' do
+      let!(:cart_item) { create(:cart_item, user: user, product: product, quantity: 2) }
+
+      before { get '/api/v1/cart', headers: auth_headers }
+
+      it 'returns status ok' do
+        expect(response).to have_http_status(:ok)
       end
 
-      response(401, 'unauthorized') do
-        run_test!
+      it 'returns the cart items within a data object' do
+        expect(json['data']['items'].size).to eq(1)
+        expect(json['data']['items'].first['item_id']).to eq(cart_item.id)
+      end
+
+      it 'returns correct cart summary' do
+        expect(json['data']['items_count']).to eq(2)
+        expect(json['data']['total_amount']).to eq('200.0')
+      end
+    end
+
+    context 'when user is authenticated and cart is empty' do
+      before { get '/api/v1/cart', headers: auth_headers }
+
+      it 'returns an empty cart' do
+        expect(response).to have_http_status(:ok)
+        expect(json['data']['items']).to be_empty
+        expect(json['data']['items_count']).to eq(0)
+        expect(json['data']['total_amount']).to eq(0)
       end
     end
   end
 
-  path '/api/v1/cart/add/{product_id}' do
-    post('Adds an item to the cart') do
-      tags 'Cart'
-      consumes 'application/json'
-      produces 'application/json'
-      security [Bearer: []]
+  describe 'POST /api/v1/cart/add/:product_id' do
+    context 'when adding a new product' do
+      it 'adds the product to the cart and returns the updated cart' do
+        expect do
+          post "/api/v1/cart/add/#{product.id}", params: { quantity: 2 }, headers: auth_headers
+        end.to change(user.cart_items, :count).by(1)
 
-      parameter name: :product_id, in: :path, type: :string, format: :uuid, required: true,
-                description: 'ID of the product to add'
-      parameter name: :params, in: :body, schema: {
-        type: :object,
-        properties: {
-          quantity: { type: :integer, example: 1, description: 'Quantity to add' }
-        },
-        required: ['quantity']
-      }
-
-      response(200, 'product added successfully') do
-        schema '$ref' => '#/components/schemas/Cart'
-        let(:product_id) { 'some-uuid' }
-        let(:params) { { quantity: 1 } }
-        run_test!
+        expect(response).to have_http_status(:ok)
+        expect(json['data']['items_count']).to eq(2)
       end
+    end
 
-      response(404, 'product not found') do
-        run_test!
+    context 'when increasing quantity of an existing product' do
+      let!(:cart_item) { create(:cart_item, user: user, product: product, quantity: 1) }
+
+      it 'increases the quantity and returns the updated cart' do
+        post "/api/v1/cart/add/#{product.id}", params: { quantity: 3 }, headers: auth_headers
+        expect(response).to have_http_status(:ok)
+        expect(cart_item.reload.quantity).to eq(4)
+        expect(json['data']['items_count']).to eq(4)
       end
     end
   end
 
-  path '/api/v1/cart/revoke/{item_id}' do
-    delete('Removes an item from the cart') do
-      tags 'Cart'
-      consumes 'application/json'
-      produces 'application/json'
-      security [Bearer: []]
+  describe 'DELETE /api/v1/cart/revoke/:item_id' do
+    let!(:cart_item) { create(:cart_item, user: user, product: product, quantity: 5) }
 
-      parameter name: :item_id, in: :path, type: :string, required: true, description: 'ID of the cart item to remove'
-      parameter name: :params, in: :body, schema: {
-        type: :object,
-        properties: {
-          quantity_to_remove: { type: :integer, example: 1,
-                                description: 'Optional quantity to remove. If absent, the whole item is removed.' }
-        }
-      }
-
-      response(200, 'item removed or quantity reduced') do
-        schema '$ref' => '#/components/schemas/Cart'
-        let(:item_id) { 'some-id' }
-        let(:params) { { quantity_to_remove: 1 } }
-        run_test!
-      end
-
-      response(404, 'item not found in cart') do
-        run_test!
+    context 'when removing a specific quantity' do
+      it 'decrements the item quantity' do
+        delete "/api/v1/cart/revoke/#{cart_item.id}", params: { quantity_to_remove: 2 }, headers: auth_headers
+        expect(response).to have_http_status(:ok)
+        expect(cart_item.reload.quantity).to eq(3)
+        expect(json['data']['items_count']).to eq(3)
       end
     end
   end
 
-  path '/api/v1/cart/clear' do
-    delete('Clears all items from the cart') do
-      tags 'Cart'
-      produces 'application/json'
-      security [Bearer: []]
+  describe 'DELETE /api/v1/cart/clear' do
+    let!(:cart_item1) { create(:cart_item, user: user, product: product) }
 
-      response(200, 'cart cleared successfully') do
-        schema '$ref' => '#/components/schemas/Cart'
-        run_test!
-      end
+    it 'removes all items from the cart' do
+      delete '/api/v1/cart/clear', headers: auth_headers
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.cart_items).to be_empty
+      expect(json['data']['items']).to be_empty
     end
   end
 end

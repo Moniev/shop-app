@@ -43,8 +43,7 @@ RSpec.describe Api::V1::OrdersController, type: :controller do
     allow(Services::OrderManagementService).to receive(:new).with(order).and_return(order_management_service)
 
     allow(order_management_service).to receive(:add_product).and_return(
-      Services::Result.new(success?: true, data: { order: order }, status: :ok,
-                           message: 'Product added successfully.')
+      Services::Result.new(success?: true, data: { order: order }, status: :ok, message: 'Product added successfully.')
     )
     allow(order_management_service).to receive(:remove_product).and_return(
       Services::Result.new(success?: true, data: { order: order }, status: :ok,
@@ -83,6 +82,7 @@ RSpec.describe Api::V1::OrdersController, type: :controller do
         allow(controller).to receive(:current_user).and_return(user)
         allow(Order).to receive(:accessible_by).and_return(user.orders)
       end
+
       it "returns a list of the user's own orders" do
         get :index, format: :json
         expect(response).to have_http_status(:ok)
@@ -153,15 +153,19 @@ RSpec.describe Api::V1::OrdersController, type: :controller do
   end
 
   describe 'POST #add_product' do
-    let(:params) { { id: order.id, order: { product_id: product.id, quantity: 2 } } }
+    let(:params) { { id: order.id, order: { product_id: product.id, quantity: '2' } } }
 
     before do
-      allow(controller).to receive(:current_user).and_return(user)
+      allow(controller).to receive(:current_user).and_return(admin)
     end
 
     context 'when the product exists' do
+      before do
+        allow(Product).to receive(:find_by).with(id: product.id.to_s).and_return(product)
+      end
+
       it 'calls the order management service and returns a successful response' do
-        expect(order_management_service).to receive(:add_product).with(product, '2').and_call_original
+        expect(order_management_service).to receive(:add_product).with(product, 2)
         post :add_product, params: params, format: :json
 
         expect(response).to have_http_status(:ok)
@@ -171,7 +175,11 @@ RSpec.describe Api::V1::OrdersController, type: :controller do
     end
 
     context 'when the product does not exist' do
-      it 'returns a not_found error' do
+      before do
+        allow(Product).to receive(:find_by).with(id: 'invalid-id').and_return(nil)
+      end
+
+      it 'returns a not found error' do
         params[:order][:product_id] = 'invalid-id'
         post :add_product, params: params, format: :json
 
@@ -183,15 +191,18 @@ RSpec.describe Api::V1::OrdersController, type: :controller do
   end
 
   describe 'DELETE #remove_product' do
-    let(:params) { { id: order.id, product_id: product.id, quantity: 1 } }
+    let(:params) { { id: order.id, product_id: product.id, quantity: '1' } }
 
     before do
-      allow(controller).to receive(:current_user).and_return(user)
+      allow(controller).to receive(:current_user).and_return(admin)
     end
 
     context 'when the product exists' do
+      before do
+        allow(Product).to receive(:find_by).with(id: product.id.to_s).and_return(product)
+      end
       it 'calls the order management service and returns a successful response' do
-        expect(order_management_service).to receive(:remove_product).with(product, '1').and_call_original
+        expect(order_management_service).to receive(:remove_product).with(product, '1')
         delete :remove_product, params: params, format: :json
 
         expect(response).to have_http_status(:ok)
@@ -201,7 +212,10 @@ RSpec.describe Api::V1::OrdersController, type: :controller do
     end
 
     context 'when the product does not exist' do
-      it 'returns a not_found error' do
+      before do
+        allow(Product).to receive(:find_by).with(id: 'invalid-id').and_return(nil)
+      end
+      it 'returns a not found error' do
         params[:product_id] = 'invalid-id'
         delete :remove_product, params: params, format: :json
 

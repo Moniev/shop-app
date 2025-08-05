@@ -1,144 +1,164 @@
-require 'swagger_helper'
+# frozen_string_literal: true
 
-RSpec.describe 'API V1 Orders', type: :request do
-  let(:test_user) { create(:user) }
-  let(:Authorization) { "Bearer #{generate_jwt_for(test_user)}" }
+require 'rails_helper'
 
-  path '/api/v1/orders' do
-    get('Lists orders') do
-      tags 'Orders'
-      produces 'application/json'
-      security [Bearer: []]
+RSpec.describe 'Api::V1::Orders', type: :request do
+  let(:json) { JSON.parse(response.body) }
 
-      response(200, 'successful') do
-        schema type: :array, items: { '$ref' => '#/components/schemas/Order' }
-        run_test!
-      end
+  let(:admin) { create(:user, :admin, :with_detail) }
+  let(:user) { create(:user, :regular, :with_detail) }
+  let(:other_user) { create(:user, :with_detail) }
+  let(:admin_headers) do
+    {
+      'Authorization' => "Bearer #{token_for(admin)}",
+      'Content-Type' => 'application/json',
+      'Accept' => 'application/json'
+    }
+  end
+  let(:user_headers) do
+    {
+      'Authorization' => "Bearer #{token_for(user)}",
+      'Content-Type' => 'application/json',
+      'Accept' => 'application/json'
+    }
+  end
+  let!(:product) { create(:product) }
+  let!(:user_order) { create(:order, user: user) }
+  let!(:other_user_order) { create(:order, user: other_user) }
 
-      response(401, 'unauthorized') do
-        run_test!
+  let(:order_management_service) { instance_double(Services::OrderManagementService) }
+
+  def token_for(user)
+    Services::BearerService.encode({ user_id: user.id }).data[:token]
+  end
+
+  shared_context 'with order management service mock' do
+    before do
+      allow(Services::OrderManagementService).to receive(:new).and_return(order_management_service)
+    end
+  end
+
+  describe 'GET /api/v1/orders' do
+    context 'as an admin' do
+      it 'returns all orders' do
+        get '/api/v1/orders', headers: admin_headers
+        expect(response).to have_http_status(:ok)
+        expect(json['orders'].size).to eq(Order.count)
       end
     end
 
-    post('Creates an order from the cart') do
-      tags 'Orders'
-      produces 'application/json'
-      security [Bearer: []]
-
-      response(201, 'order created') do
-        schema '$ref' => '#/components/schemas/Order'
-        run_test!
-      end
-
-      response(422, 'unprocessable entity (e.g., empty cart)') do
-        schema type: :object, properties: {
-          errors: { type: :array, items: { type: :string }, example: ['Your cart is empty.'] }
-        }
-        run_test!
+    context 'as a regular user' do
+      it "returns only the user's own orders" do
+        get '/api/v1/orders', headers: user_headers
+        expect(response).to have_http_status(:ok)
+        expect(json['orders'].size).to eq(user.orders.count)
+        expect(json['orders'].first['id']).to eq(user_order.id)
       end
     end
   end
 
-  path '/api/v1/orders/me' do
-    get('Lists orders for the current user') do
-      tags 'Orders'
-      produces 'application/json'
-      security [Bearer: []]
+  describe 'GET /api/v1/orders/me' do
+    it "returns the current user's orders" do
+      get '/api/v1/orders/me', headers: user_headers
+      expect(response).to have_http_status(:ok)
+      expect(json['orders'].first['id']).to eq(user_order.id)
+    end
+  end
 
-      response(200, 'successful') do
-        schema type: :array, items: { '$ref' => '#/components/schemas/Order' }
-        run_test!
+  describe 'GET /api/v1/orders/:id' do
+    it 'allows a user to see their own order' do
+      get "/api/v1/orders/#{user_order.id}", headers: user_headers
+      expect(response).to have_http_status(:ok)
+      expect(json['order']['id']).to eq(user_order.id)
+    end
+  end
+
+  describe 'POST /api/v1/orders' do
+    context 'when creation is successful' do
+      let(:success_result) { Services::Result.new(success?: true, data: { order: user_order }, status: :created) }
+      before { allow(Services::OrderCreationService).to receive(:call).and_return(success_result) }
+
+      it 'returns a 201 status and the order' do
+        post '/api/v1/orders', headers: user_headers, params: {}.to_json
+        expect(response).to have_http_status(:created)
+        expect(json['order']['id']).to eq(user_order.id)
+      end
+    end
+
+    context 'when creation fails' do
+      # Poprawka warningu: :unprocessable_entity -> :unprocessable_content
+      let(:failure_result) { Services::Result.new(success?: false, errors: ['Cart is empty'], status: :unprocessable_content) }
+      before { allow(Services::OrderCreationService).to receive(:call).and_return(failure_result) }
+
+      it 'returns a 422 status with errors' do
+        post '/api/v1/orders', headers: user_headers, params: {}.to_json
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(json['errors']).to include('Cart is empty')
       end
     end
   end
 
-  path '/api/v1/orders/{id}' do
-    parameter name: 'id', in: :path, type: :string, description: 'Order ID'
+  describe 'PATCH /api/v1/orders/:id' do
+    include_context 'with order management service mock'
+    let(:update_params) { { order: { status: 'shipped' } }.to_json }
 
-    get('Shows a single order') do
-      tags 'Orders'
-      produces 'application/json'
-      security [Bearer: []]
-
-      response(200, 'successful') do
-        schema '$ref' => '#/components/schemas/Order'
-        let(:id) { '123' }
-        run_test!
-      end
-
-      response(404, 'not found') do
-        run_test!
+    context 'as an admin' do
+      it 'updates the order' do
+        allow(order_management_service).to receive(:update).and_return(Services::Result.new(success?: true,
+                                                                                            data: { order: user_order }, status: :ok))
+        patch "/api/v1/orders/#{user_order.id}", headers: admin_headers, params: update_params
+        expect(response).to have_http_status(:ok)
       end
     end
 
-    patch('Updates an order (Admin only)') do
-      tags 'Orders'
-      consumes 'application/json'
-      produces 'application/json'
-      security [Bearer: []]
-
-      parameter name: :order_params, in: :body, schema: {
-        type: :object,
-        properties: {
-          order: {
-            type: :object,
-            properties: {
-              status: { type: :string, example: 'shipped' },
-              payment_status: { type: :string, example: 'paid' }
-            }
-          }
-        },
-        required: ['order']
-      }
-
-      response(200, 'successful') do
-        schema '$ref' => '#/components/schemas/Order'
-        let(:id) { '123' }
-        let(:order_params) { { order: { status: 'shipped' } } }
-        run_test!
-      end
-
-      response(403, 'forbidden') do
-        run_test!
-      end
-    end
-
-    delete('Deletes an order (Admin only)') do
-      tags 'Orders'
-      security [Bearer: []]
-
-      response(204, 'no content') do
-        let(:id) { '123' }
-        run_test!
-      end
-
-      response(403, 'forbidden') do
-        run_test!
+    context 'as a regular user' do
+      it 'is forbidden' do
+        patch "/api/v1/orders/#{user_order.id}", headers: user_headers, params: update_params
+        expect(response).to have_http_status(:forbidden)
       end
     end
   end
 
-  path '/api/v1/orders/{id}/cancel' do
-    post('Cancels an order') do
-      tags 'Orders'
-      produces 'application/json'
-      security [Bearer: []]
-      parameter name: 'id', in: :path, type: :string, description: 'Order ID'
+  describe 'POST /api/v1/orders/:id/products' do
+    include_context 'with order management service mock'
+    let(:add_product_params) { { order: { product_id: product.id, quantity: 2 } }.to_json }
 
-      response(200, 'successful') do
-        schema type: :object, properties: {
-          message: { type: :string, example: 'Order has been cancelled.' }
-        }
-        let(:id) { '123' }
-        run_test!
+    it 'adds a product to an order' do
+      allow(order_management_service).to receive(:add_product).with(product,
+                                                                    2).and_return(Services::Result.new(success?: true,
+                                                                                                       data: { order: user_order }, status: :ok))
+      post "/api/v1/orders/#{user_order.id}/products", headers: admin_headers, params: add_product_params
+      expect(response).to have_http_status(:ok)
+    end
+  end
+
+  describe 'POST /api/v1/orders/:id/cancel' do
+    include_context 'with order management service mock'
+
+    it 'allows a user to cancel their own order' do
+      allow(order_management_service).to receive(:cancel).and_return(Services::Result.new(success?: true,
+                                                                                          data: { order: user_order }, status: :ok))
+      post "/api/v1/orders/#{user_order.id}/cancel", headers: user_headers
+      expect(response).to have_http_status(:ok)
+    end
+  end
+
+  describe 'DELETE /api/v1/orders/:id' do
+    include_context 'with order management service mock'
+
+    context 'as an admin' do
+      it 'deletes the order' do
+        allow(order_management_service).to receive(:destroy).and_return(Services::Result.new(success?: true,
+                                                                                             status: :no_content))
+        delete "/api/v1/orders/#{user_order.id}", headers: admin_headers
+        expect(response).to have_http_status(:no_content)
       end
+    end
 
-      response(422, 'unprocessable entity (e.g., order cannot be cancelled)') do
-        schema type: :object, properties: {
-          errors: { type: :array, items: { type: :string }, example: ['Order cannot be cancelled at this stage.'] }
-        }
-        let(:id) { '123' }
-        run_test!
+    context 'as a regular user' do
+      it 'is forbidden' do
+        delete "/api/v1/orders/#{user_order.id}", headers: user_headers
+        expect(response).to have_http_status(:forbidden)
       end
     end
   end

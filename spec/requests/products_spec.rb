@@ -1,208 +1,187 @@
 # frozen_string_literal: true
 
-require 'swagger_helper'
+require 'rails_helper'
 
-RSpec.describe 'API V1 Products', type: :request do
-  let(:test_user) { create(:user) }
-  let(:Authorization) { "Bearer #{generate_jwt_for(test_user)}" }
+RSpec.describe 'Api::V1::Products', type: :request do
+  let(:json) { JSON.parse(response.body) }
 
-  let(:product_schema) do
+  let(:admin) { create(:user, :admin, :with_detail) }
+  let(:user) { create(:user, :regular, :with_detail) }
+
+  let(:admin_headers) do
     {
-      type: :object,
-      properties: {
-        id: { type: :string, format: :uuid },
-        name: { type: :string, example: 'Classic T-Shirt' },
-        price: { type: :string, format: :decimal },
-        description: { type: :string, nullable: true },
-        created_at: { type: :string, format: 'date-time' },
-        product_photos: {
-          type: :array,
-          items: {
-            type: :object,
-            properties: { id: { type: :integer }, url: { type: :string } }
-          }
-        }
-      },
-      required: %w[id name price]
+      'Authorization' => "Bearer #{token_for(admin)}",
+      'Content-Type' => 'application/json',
+      'Accept' => 'application/json'
+    }
+  end
+  let(:user_headers) do
+    {
+      'Authorization' => "Bearer #{token_for(user)}",
+      'Content-Type' => 'application/json',
+      'Accept' => 'application/json'
     }
   end
 
-  path '/api/v1/products' do
-    get('Lists all products') do
-      tags 'Products'
-      produces 'application/json'
-      parameter name: :page, in: :query, type: :integer, description: 'Page number for pagination', required: false
+  let(:public_headers) { { 'Accept' => 'application/json' } }
+  let!(:product) { create(:product) }
 
-      response(200, 'successful') do
-        schema type: :array, items: { '$ref' => '#/components/schemas/Product' }
-        run_test!
+  def token_for(user)
+    Services::BearerService.encode({ user_id: user.id }).data[:token]
+  end
+
+  describe 'GET /api/v1/products' do
+    it 'returns a list of products' do
+      products_relation = Product.where(id: product.id)
+
+      allow(Services::ProductCachingService).to receive(:fetch_all).and_return(products_relation)
+
+      get '/api/v1/products', headers: public_headers
+
+      expect(response).to have_http_status(:ok)
+      expect(json['products'].size).to eq(1)
+      expect(json['products'].first['id']).to eq(product.id)
+      expect(json['meta']['total_count']).to eq(1)
+    end
+  end
+
+  describe 'GET /api/v1/products/:id' do
+    context 'when product exists' do
+      it 'returns the product' do
+        allow(Services::ProductCachingService).to receive(:fetch_one).with(product.id.to_s).and_return(product)
+
+        get "/api/v1/products/#{product.id}"
+        expect(response).to have_http_status(:ok)
+        expect(json['product']['id']).to eq(product.id)
       end
     end
 
-    post('Creates a new product') do
-      tags 'Products'
-      consumes 'application/json'
-      produces 'application/json'
-      security [Bearer: []]
+    context 'when product does not exist' do
+      it 'returns a not found error' do
+        allow(Services::ProductCachingService).to receive(:fetch_one).with('non-existent').and_return(nil)
 
-      parameter name: :product_params, in: :body, schema: {
-        type: :object,
-        properties: {
-          product: {
-            type: :object,
-            properties: {
-              name: { type: :string, example: 'New Gadget' },
-              price: { type: :number, example: 99.99 },
-              description: { type: :string, example: 'A shiny new gadget.' }
-            },
-            required: %w[name price]
-          }
-        },
-        required: ['product']
-      }
-
-      response(201, 'product created') do
-        schema({ '$ref' => '#/components/schemas/Product' })
-        let(:product_params) { { product: { name: 'Test', price: 10.0 } } }
-        run_test!
-      end
-
-      response(422, 'unprocessable entity') do
-        run_test!
+        get '/api/v1/products/non-existent'
+        expect(response).to have_http_status(:not_found)
       end
     end
   end
 
-  path '/api/v1/products/{id}' do
-    parameter name: 'id', in: :path, type: :string, format: :uuid, description: 'Product ID'
+  describe 'POST /api/v1/products' do
+    let(:valid_params) { { product: { name: 'New Gadget', price: 99.99 } }.to_json }
 
-    get('Shows a single product') do
-      tags 'Products'
-      produces 'application/json'
+    context 'as an admin' do
+      it 'creates a product when params are valid' do
+        created_product = build_stubbed(:product, name: 'New Gadget', price: 99.99)
+        successful_result = Services::Result.new(success?: true, data: { product: created_product }, status: :created)
+        allow(Services::ProductCreationService).to receive(:call).and_return(successful_result)
 
-      response(200, 'successful') do
-        schema({ '$ref' => '#/components/schemas/Product' })
-        let(:id) { 'some-uuid' }
-        run_test!
+        post '/api/v1/products', headers: admin_headers, params: valid_params
+        expect(response).to have_http_status(:created)
+        expect(json['product']['name']).to eq('New Gadget')
       end
 
-      response(404, 'not found') do
-        run_test!
-      end
-    end
+      it 'returns an error when params are invalid' do
+        failed_result = Services::Result.new(success?: false, errors: ["Name can't be blank"],
+                                             status: :unprocessable_content)
+        allow(Services::ProductCreationService).to receive(:call).and_return(failed_result)
 
-    patch('Updates a product') do
-      tags 'Products'
-      consumes 'application/json'
-      produces 'application/json'
-      security [Bearer: []]
-      parameter name: :product_params, in: :body, schema: {
-        type: :object,
-        properties: {
-          product: {
-            type: :object,
-            properties: {
-              name: { type: :string, example: 'New Gadget' },
-              price: { type: :number, example: 99.99 },
-              description: { type: :string, example: 'A shiny new gadget.' }
-            },
-            required: %w[name price]
-          }
-        },
-        required: ['product']
-      }
-
-      response(200, 'successful') do
-        schema({ '$ref' => '#/components/schemas/Product' })
-        let(:id) { 'some-uuid' }
-        let(:product_params) { { product: { name: 'Updated Name' } } }
-        run_test!
+        post '/api/v1/products', headers: admin_headers, params: { product: { name: '' } }.to_json
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(json['errors']).to include("Name can't be blank")
       end
     end
 
-    delete('Deletes a product') do
-      tags 'Products'
-      security [Bearer: []]
-
-      response(204, 'no content') do
-        let(:id) { 'some-uuid' }
-        run_test!
+    context 'as a regular user' do
+      it 'is forbidden' do
+        post '/api/v1/products', headers: user_headers, params: valid_params
+        expect(response).to have_http_status(:forbidden)
       end
     end
   end
 
-  path '/api/v1/products/{id}/like' do
-    post('Likes a product') do
-      tags 'Products'
-      produces 'application/json'
-      security [Bearer: []]
-      parameter name: 'id', in: :path, type: :string, format: :uuid, description: 'Product ID'
+  describe 'PATCH /api/v1/products/:id' do
+    let(:update_params) { { product: { price: 129.99 } }.to_json }
 
-      response(200, 'successful') do
-        schema type: :object, properties: { message: { type: :string } }
-        let(:id) { 'some-uuid' }
-        run_test!
+    context 'as an admin' do
+      it 'updates the product' do
+        successful_result = Services::Result.new(success?: true, data: { product: product }, status: :ok)
+        allow(Services::ProductUpdateService).to receive(:call).and_return(successful_result)
+
+        patch "/api/v1/products/#{product.id}", headers: admin_headers, params: update_params
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context 'as a regular user' do
+      it 'is forbidden' do
+        patch "/api/v1/products/#{product.id}", headers: user_headers, params: update_params
+        expect(response).to have_http_status(:forbidden)
       end
     end
   end
 
-  path '/api/v1/products/{id}/rate' do
-    post('Rates a product') do
-      tags 'Products'
-      consumes 'application/json'
-      produces 'application/json'
-      security [Bearer: []]
-      parameter name: 'id', in: :path, type: :string, format: :uuid, description: 'Product ID'
-      parameter name: :rating_params, in: :body, schema: {
-        type: :object,
-        properties: {
-          product_rating: {
-            type: :object,
-            properties: {
-              rating: { type: :integer, example: 5, description: 'Rating from 1 to 5' },
-              comment: { type: :string, example: 'Great product!', nullable: true }
-            },
-            required: ['rating']
-          }
-        },
-        required: ['product_rating']
-      }
+  describe 'DELETE /api/v1/products/:id' do
+    context 'as an admin' do
+      it 'deletes the product' do
+        successful_result = Services::Result.new(success?: true, status: :no_content)
+        allow(Services::ProductDeletionService).to receive(:call).and_return(successful_result)
 
-      response(200, 'successful') do
-        let(:id) { 'some-uuid' }
-        let(:rating_params) { { product_rating: { rating: 5 } } }
-        run_test!
+        delete "/api/v1/products/#{product.id}", headers: admin_headers
+        expect(response).to have_http_status(:no_content)
+      end
+    end
+
+    context 'as a regular user' do
+      it 'is forbidden' do
+        delete "/api/v1/products/#{product.id}", headers: user_headers
+        expect(response).to have_http_status(:forbidden)
       end
     end
   end
 
-  path '/api/v1/products/{id}/comment' do
-    post('Adds a comment to a product') do
-      tags 'Products'
-      consumes 'application/json'
-      produces 'application/json'
-      security [Bearer: []]
-      parameter name: 'id', in: :path, type: :string, format: :uuid, description: 'Product ID'
-      parameter name: :comment_params, in: :body, schema: {
-        type: :object,
-        properties: {
-          product_comment: {
-            type: :object,
-            properties: {
-              content: { type: :string, example: 'This is a comment.' },
-              parent_id: { type: :integer, example: 1, nullable: true,
-                           description: 'ID of the parent comment for a reply' }
-            },
-            required: ['content']
-          }
-        },
-        required: ['product_comment']
-      }
+  describe 'Product Interactions' do
+    let(:interaction_service) { instance_double(Services::ProductInteractionService) }
+    before do
+      allow(Services::ProductInteractionService).to receive(:new).with(user).and_return(interaction_service)
+    end
 
-      response(200, 'successful') do
-        let(:id) { 'some-uuid' }
-        let(:comment_params) { { product_comment: { content: 'Nice!' } } }
-        run_test!
+    describe 'POST /api/v1/products/:id/like' do
+      it 'allows an authenticated user to like a product' do
+        successful_result = Services::Result.new(success?: true, data: { product: product }, status: :ok)
+        allow(interaction_service).to receive(:like).with(product).and_return(successful_result)
+
+        post "/api/v1/products/#{product.id}/like", headers: user_headers
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'returns unauthorized for unauthenticated users' do
+        post "/api/v1/products/#{product.id}/like"
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    describe 'POST /api/v1/products/:id/rate' do
+      let(:rate_params) { { product_rating: { rating: 5, comment: 'Great!' } }.to_json }
+
+      it 'allows an authenticated user to rate a product' do
+        successful_result = Services::Result.new(success?: true, data: { product: product }, status: :ok)
+        allow(interaction_service).to receive(:rate).with(product, 5, 'Great!').and_return(successful_result)
+
+        post "/api/v1/products/#{product.id}/rate", headers: user_headers, params: rate_params
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    describe 'POST /api/v1/products/:id/comment' do
+      let(:comment_params) { { product_comment: { content: 'This is a comment.' } }.to_json }
+
+      it 'allows an authenticated user to add a comment' do
+        successful_result = Services::Result.new(success?: true, data: { product: product }, status: :ok)
+        allow(interaction_service).to receive(:add_comment).with(product, 'This is a comment.',
+                                                                 nil).and_return(successful_result)
+
+        post "/api/v1/products/#{product.id}/comment", headers: user_headers, params: comment_params
+        expect(response).to have_http_status(:ok)
       end
     end
   end

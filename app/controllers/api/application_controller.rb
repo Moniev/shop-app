@@ -34,6 +34,8 @@ module Api
       yield
     rescue CanCan::AccessDenied => e
       render json: { error: 'Not Authorized', message: e.message }, status: :forbidden
+    rescue Api::ApplicationController::Forbidden => e
+      render json: { errors: [e.message], message: 'Access denied.' }, status: :forbidden
     rescue Stripe::SignatureVerificationError => e
       render json: { errors: [e.message], message: 'Stripe signature verification failed.' }, status: :bad_request
     rescue ActiveRecord::RecordNotFound => e
@@ -73,7 +75,6 @@ module Api
       return unless @decoded_jwt_token&.success?
 
       @current_user ||= User.find_by(id: @decoded_jwt_token&.data&.dig(:payload, :user_id))
-      Rails.logger.debug { "Handling action for user ID: #{@current_user&.id}" } if @current_user
     end
 
     # The primary authentication filter for securing endpoints.

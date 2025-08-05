@@ -9,8 +9,9 @@ module Api
     # creating from a cart, viewing details, and modifying status.
     # It enforces authentication and role-based authorization for secure access.
     class OrdersController < Api::ApplicationController
-      load_and_authorize_resource except: %i[me create]
+      before_action :set_order, only: %i[add_product remove_product cancel]
       before_action :set_product, only: %i[add_product remove_product]
+      load_and_authorize_resource except: %i[me create add_product remove_product]
 
       # GET /api/v1/orders
       #
@@ -22,7 +23,7 @@ module Api
       # @return [void] Sets `@orders` for the Jbuilder view, implicitly rendering
       #   `index.json.jbuilder` with a status of `:ok` (200).
       def index
-        @orders = Order.accessible_by(current_user).includes(:user, :items).order(created_at: :desc)
+        @orders = Order.accessible_by(current_ability).includes(:user, :items).order(created_at: :desc)
         bind_data_and_render(nil, 'index')
       end
 
@@ -84,12 +85,12 @@ module Api
       #   with the appropriate status.
       # @see Services::OrderManagementService#update
       def update
-        result = order_management_service.update(order_params)
+        result = order_management_service.update(update_order_params)
         bind_data_and_render(result, 'show')
       end
 
       def add_product
-        quantity = add_product_params[:quantity]
+        quantity = add_product_params[:quantity].to_i
         result = order_management_service.add_product(@product, quantity)
         bind_data_and_render(result, 'show')
       end
@@ -127,6 +128,15 @@ module Api
       end
 
       private
+
+      def set_order
+        @order = Order.find_by(id: params[:id])
+        unless @order
+          render json: { errors: ['Order not found.'] }, status: :not_found
+          return
+        end
+        authorize! action_name.to_sym, @order
+      end
 
       def set_product
         product_id = params[:product_id] || add_product_params[:product_id]

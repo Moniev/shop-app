@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-if @errors.present?
-  json.status @status
-  json.errors @errors
-  json.details @data&.dig(:details)
-else
-  json.status @status
-  json.message @message
-  json.details @data&.dig(:details)
+json.success @success
+json.message @message
+json.errors @errors if @errors.present?
+
+if @data
+  json.data do
+    json.merge! @data
+  end
 end

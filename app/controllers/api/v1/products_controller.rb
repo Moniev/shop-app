@@ -23,7 +23,8 @@ module Api
       # @return [void] Sets `@products` for the Jbuilder view, implicitly rendering
       #   `index.json.jbuilder` with a status of `:ok` (200).
       def index
-        @products = Services::ProductCachingService.fetch_all(params[:page])
+        products_relation = Services::ProductCachingService.fetch_all(params[:page])
+        @products = products_relation.includes(:product_photos, :product_likes, :comments).page(params[:page])
         bind_data_and_render(nil, 'index')
       end
 

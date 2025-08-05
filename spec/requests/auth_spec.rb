@@ -1,204 +1,149 @@
 # frozen_string_literal: true
 
-require 'swagger_helper'
+require 'rails_helper'
 
-RSpec.describe 'API V1 Authentication', type: :request do
-  let(:test_user) { create(:user) }
-  let(:Authorization) { "Bearer #{generate_jwt_for(test_user)}" }
+RSpec.describe 'Api::V1::Auth', type: :request do
+  let(:json) { JSON.parse(response.body) }
 
-  path '/api/v1/auth/login' do
-    post('Logs a user in') do
-      tags 'Authentication'
-      consumes 'application/json'
-      produces 'application/json'
+  describe 'POST /api/v1/auth/login' do
+    let!(:user) do
+      create(:user, :with_detail, password: 'password123', password_confirmation: 'password123', active: true,
+                                  verified: true)
+    end
+    let(:login_params) { { mail: user.mail, password: 'password123' } }
 
-      parameter name: :credentials, in: :body, schema: {
-        type: :object,
-        properties: {
-          mail: { type: :string, format: :email, example: 'user@example.com' },
-          password: { type: :string, format: :password, example: 'password123' }
-        },
-        required: %w[mail password]
-      }
-
-      response(200, 'successful login (2FA disabled)') do
-        schema type: :object,
-               properties: {
-                 token: { type: :string,
-                          example: 'eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE2NzgwMDgwMDB9.sig' }
-               }
-        let(:credentials) { { mail: 'user@example.com', password: 'password' } }
-        run_test!
+    context 'with valid credentials' do
+      it 'returns a successful response' do
+        post '/api/v1/auth/login', params: login_params
+        expect(response).to have_http_status(:ok)
+        expect(json['data']['token']).not_to be_empty
       end
+    end
 
-      response(202, '2FA code sent') do
-        schema type: :object,
-               properties: {
-                 message: { type: :string, example: '2FA code sent to your email' }
-               }
-        let(:credentials) { { mail: 'user_with_2fa@example.com', password: 'password' } }
-        run_test!
-      end
-
-      response(401, 'unauthorized') do
-        schema type: :object,
-               properties: {
-                 errors: { type: :array, items: { type: :string }, example: ['Invalid email or password'] }
-               }
-        let(:credentials) { { mail: 'user@example.com', password: 'wrongpassword' } }
-        run_test!
+    context 'with invalid credentials' do
+      it 'returns an unauthorized error' do
+        post '/api/v1/auth/login', params: { mail: user.mail, password: 'wrongpassword' }
+        expect(response).to have_http_status(:unauthorized)
+        expect(json['errors']).to include('Invalid email or password.')
       end
     end
   end
 
-  path '/api/v1/auth/verify_2fa' do
-    post('Verifies a 2FA code') do
-      tags 'Authentication'
-      consumes 'application/json'
-      produces 'application/json'
+  describe 'POST /api/v1/auth/verify_2fa' do
+    let!(:user) { create(:user, :with_detail, :two_factor_enabled) }
+    let!(:second_factor_code) { create(:second_factor_code, user: user) }
 
-      parameter name: :verification, in: :body, schema: {
-        type: :object,
-        properties: {
-          mail: { type: :string, format: :email, example: 'user@example.com' },
-          second_factor_code: { type: :string, example: '1a2b3c4d' }
-        },
-        required: %w[mail second_factor_code]
-      }
-
-      response(200, 'successful') do
-        schema type: :object,
-               properties: {
-                 token: { type: :string,
-                          example: 'eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE2NzgwMDgwMDB9.sig' }
-               }
-        let(:verification) { { mail: 'user@example.com', second_factor_code: '123456' } }
-        run_test!
+    context 'with a valid 2FA code' do
+      it 'returns a new token and a success message' do
+        post '/api/v1/auth/verify_2fa', params: { mail: user.mail, second_factor_code: second_factor_code.code }
+        expect(response).to have_http_status(:ok)
+        expect(json['message']).to eq('2FA verified successfully via database.')
       end
+    end
 
-      response(401, 'unauthorized') do
-        schema type: :object,
-               properties: {
-                 errors: { type: :array, items: { type: :string }, example: ['Invalid 2FA code'] }
-               }
-        let(:verification) { { mail: 'user@example.com', second_factor_code: 'wrongcode' } }
-        run_test!
+    context 'with an invalid 2FA code' do
+      it 'returns an unauthorized error' do
+        post '/api/v1/auth/verify_2fa', params: { mail: user.mail, second_factor_code: '000000' }
+        expect(response).to have_http_status(:unauthorized)
+        expect(json['errors']).to include('Invalid 2FA code.')
       end
     end
   end
 
-  path '/api/v1/auth/activate' do
-    patch('Activates a user account') do
-      tags 'Authentication'
-      consumes 'application/json'
-      produces 'application/json'
+  describe 'PATCH /api/v1/auth/activate' do
+    context 'with a valid activation code' do
+      let!(:user) { create(:user, :with_detail, :unactivated) }
+      let!(:activation_code) { create(:activation_code, user: user) }
 
-      parameter name: :activation, in: :body, schema: {
-        type: :object,
-        properties: {
-          mail: { type: :string, format: :email, example: 'user@example.com' },
-          activation_code: { type: :string, example: 'abcdef123456' }
-        },
-        required: %w[mail activation_code]
-      }
-
-      response(200, 'successful') do
-        schema type: :object, properties: { message: { type: :string, example: 'Account activated' } }
-        let(:activation) { { mail: 'user@example.com', activation_code: 'valid_code' } }
-        run_test!
+      it 'activates the user and returns a success message' do
+        patch '/api/v1/auth/activate', params: { mail: user.mail, activation_code: activation_code.code }
+        expect(response).to have_http_status(:ok)
+        expect(json['message']).to eq('Account activated successfully.')
+        expect(user.reload.active?).to be true
       end
+    end
 
-      response(422, 'unprocessable entity') do
-        schema type: :object,
-               properties: { errors: { type: :array, items: { type: :string },
-                                       example: ['Invalid activation code'] } }
-        let(:activation) { { mail: 'user@example.com', activation_code: 'invalid_code' } }
-        run_test!
+    context 'with an invalid activation code' do
+      let!(:user) { create(:user, :with_detail, :unactivated) }
+      let!(:activation_code) { create(:activation_code, user: user) }
+
+      it 'does not activate the user and returns an error' do
+        patch '/api/v1/auth/activate', params: { mail: user.mail, activation_code: 'invalid_code' }
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(json['errors']).to include('Invalid or expired activation code.')
+        expect(user.reload.active?).to be false
       end
     end
   end
 
-  path '/api/v1/auth/verify' do
-    patch('Verifies a user account') do
-      tags 'Authentication'
-      consumes 'application/json'
-      produces 'application/json'
+  describe 'PATCH /api/v1/auth/verify' do
+    let!(:user) { create(:user, :with_detail, :unverified) }
+    let!(:verification_code) { create(:verification_code, user: user) }
 
-      parameter name: :verification, in: :body, schema: {
-        type: :object,
-        properties: {
-          mail: { type: :string, format: :email, example: 'user@example.com' },
-          verification_code: { type: :string, example: 'abcdef123456' }
-        },
-        required: %w[mail verification_code]
-      }
-
-      response(200, 'successful') do
-        schema type: :object, properties: { message: { type: :string, example: 'Account verified' } }
-        let(:verification) { { mail: 'user@example.com', verification_code: 'valid_code' } }
-        run_test!
+    context 'with a valid verification code' do
+      it 'verifies the user and returns a success message' do
+        patch '/api/v1/auth/verify', params: { mail: user.mail, verification_code: verification_code.code }
+        expect(response).to have_http_status(:ok)
+        expect(json['message']).to eq('Account verified successfully.')
+        expect(user.reload.verified?).to be true
       end
+    end
 
-      response(422, 'unprocessable entity') do
-        schema type: :object,
-               properties: { errors: { type: :array, items: { type: :string },
-                                       example: ['Invalid verification code'] } }
-        let(:verification) { { mail: 'user@example.com', verification_code: 'invalid_code' } }
-        run_test!
+    context 'with an invalid verification code' do
+      it 'does not verify the user and returns an error' do
+        patch '/api/v1/auth/verify', params: { mail: user.mail, verification_code: 'invalid_code' }
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(json['errors']).to include('Invalid or expired verification code.')
+        expect(user.reload.verified?).to be false
       end
     end
   end
 
-  path '/api/v1/auth/password/reset' do
-    post('Requests a password reset code') do
-      tags 'Authentication'
-      consumes 'application/json'
-      produces 'application/json'
+  describe 'POST /api/v1/auth/password/reset' do
+    let!(:user) { create(:user, :with_detail) }
 
-      parameter name: :reset_request, in: :body, schema: {
-        type: :object,
-        properties: { mail: { type: :string, format: :email, example: 'user@example.com' } },
-        required: ['mail']
-      }
+    include ActiveJob::TestHelper
 
-      response(200, 'successful') do
-        schema type: :object,
-               properties: { message: { type: :string,
-                                        example: 'If an account with that email exists, we have sent password reset instructions.' } }
-        let(:reset_request) { { mail: 'user@example.com' } }
-        run_test!
+    context 'when the user exists' do
+      it 'sends reset instructions, returns a success message, and enqueues a mailer job' do
+        clear_enqueued_jobs
+
+        expect do
+          post '/api/v1/auth/password/reset', params: { mail: user.mail }
+        end.to have_enqueued_job(ActionMailer::MailDeliveryJob).once
+
+        expect(response).to have_http_status(:ok)
+        expect(json['message']).to eq('Password reset instructions have been sent.')
+
+        expect(ResetCode.find_by(user_id: user.id)).not_to be_nil
+      end
+    end
+  end
+
+  describe 'PATCH /api/v1/auth/password/reset' do
+    let!(:user) { create(:user, :with_detail) }
+    let!(:reset_code) { create(:reset_code, user: user) }
+
+    context 'with a valid reset code and matching passwords' do
+      it 'resets the password and returns a success message' do
+        patch '/api/v1/auth/password/reset', params: {
+          reset_code: reset_code.code,
+          password: 'newPassword123',
+          password_confirmation: 'newPassword123'
+        }
+        expect(response).to have_http_status(:ok)
+        expect(json['message']).to eq('Password has been reset successfully.')
+        expect(user.reload.authenticate('newPassword123')).to be_truthy
       end
     end
 
-    patch('Resets password with a code') do
-      tags 'Authentication'
-      consumes 'application/json'
-      produces 'application/json'
+    context 'with an invalid reset code' do
+      it 'returns an unprocessable entity error' do
+        patch '/api/v1/auth/password/reset',
+              params: { reset_code: 'invalid_token', password: 'pw', password_confirmation: 'pw' }
 
-      parameter name: :reset_confirmation, in: :body, schema: {
-        type: :object,
-        properties: {
-          reset_code: { type: :string, example: 'xyz789abc' },
-          password: { type: :string, format: :password, example: 'newPassword123' },
-          password_confirmation: { type: :string, format: :password, example: 'newPassword123' }
-        },
-        required: %w[reset_code password password_confirmation]
-      }
-
-      response(200, 'successful') do
-        schema type: :object,
-               properties: { message: { type: :string,
-                                        example: 'Password has been reset successfully.' } }
-        let(:reset_confirmation) { { reset_code: 'valid_code', password: 'new', password_confirmation: 'new' } }
-        run_test!
-      end
-
-      response(422, 'unprocessable entity') do
-        schema type: :object,
-               properties: { errors: { type: :array, items: { type: :string },
-                                       example: ['Invalid or expired reset code'] } }
-        let(:reset_confirmation) { { reset_code: 'invalid_code', password: 'new', password_confirmation: 'new' } }
-        run_test!
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(json['errors']).to include('Invalid or expired reset code.')
       end
     end
   end

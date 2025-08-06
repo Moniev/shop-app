@@ -2,15 +2,12 @@
 
 class Rack::Attack
   self.enabled = false if Rails.env.test?
-  cache.store = ActiveSupport::Cache::RedisCacheStore.new(url: ENV['REDIS_URL'])
 
-  blocklist('fail2ban/pentesters') do |req|
-    Redis.current.with { |r| r.sismember('fail2ban-banned', req.ip) }
-  end
+  cache.store = ActiveSupport::Cache::MemoryStore.new
 
   blocklist('block probes/scanners') do |req|
-    Rack::Attack::Allow2Ban.filter(req.ip, maxretry: 0, findtime: 1.day, bantime: 1.day) do
-      req.path.match?(%r{/wp-admin|/wp-login\.php|/\.env|/phpmyadmin|/adminer|/\.git/config})
+    Rack::Attack::Fail2Ban.filter(req.ip, maxretry: 0, findtime: 1.day, bantime: 1.day) do
+      req.path.to_s.match?(%r{/wp-admin|/wp-login\.php|/\.env|/phpmyadmin|/adminer|/\.git/config})
     end
   end
 
@@ -19,10 +16,7 @@ class Rack::Attack
   end
 
   throttle('logins/email+ip', limit: 6, period: 60) do |req|
-    if req.path == '/api/v1/auth/login' && req.post?
-      [req.params['user']['email'].to_s.downcase.gsub(/\s+/, ''),
-       req.ip]
-    end
+    [req.params['user']['email'].to_s.downcase.gsub(/\s+/, ''), req.ip] if req.path == '/api/v1/auth/login' && req.post?
   end
 
   throttle('2fa/ip', limit: 5, period: 60) do |req|
@@ -44,7 +38,6 @@ class Rack::Attack
   self.throttled_responder = lambda do |env|
     req = ActionDispatch::Request.new(env)
     ActiveSupport::Notifications.instrument('rack.attack.throttle', { request: req })
-
     [429, { 'Content-Type' => 'application/json' }, [{ error: 'Throttle limit exceeded' }.to_json]]
   end
 end

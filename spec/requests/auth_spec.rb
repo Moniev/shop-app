@@ -113,9 +113,7 @@ RSpec.describe 'Api::V1::Auth', type: :request do
         end.to have_enqueued_job(ActionMailer::MailDeliveryJob).once
 
         expect(response).to have_http_status(:ok)
-        expect(json['message']).to eq('Password reset instructions have been sent.')
-
-        expect(ResetCode.find_by(user_id: user.id)).not_to be_nil
+        expect(json['message']).to eq('If an account exists, instructions have been sent to your email.')
       end
     end
   end

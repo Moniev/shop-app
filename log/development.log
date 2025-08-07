@@ -1040,3 +1040,7 @@ Action update_details from controller users took 0.01 seconds.
 Completed 403 Forbidden in 6ms (Views: 1.6ms | ActiveRecord: 0.7ms (1 query, 0 cached) | GC: 0.0ms)
 
 
+Twilio client initialized successfully.
+  [1m[36mActiveRecord::SchemaMigration Load (1.2ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ShopOnRails'*/[0m
+Twilio client initialized successfully.
+  [1m[36mActiveRecord::SchemaMigration Load (1.2ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='ShopOnRails'*/[0m

@@ -18,6 +18,7 @@ module Services
         redis_key = "password_reset:#{code}"
         begin
           Redis.current.with { |conn| conn.set(redis_key, user.id, ex: 2.hours.to_i) }
+          UserMailer.dial_reset_code(user, code).deliver_later
         rescue Redis::CannotConnectError => e
           Rails.logger.error("Redis error during password reset request: #{e.message}")
           user.reset_code&.destroy

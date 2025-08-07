@@ -32,11 +32,13 @@ class User < ApplicationRecord
     final_expires_at = expires_at || expires_in_minutes.minutes.from_now
     reset_code = ResetCode.new(user: self, code: code, expires_at: final_expires_at)
     reset_code.save!
+    reset_code
   end
 
   def create_verification_code!(code:, expires_in_minutes: 15)
-    reset_code = VerificationCode.new(user: self, code: code, expires_at: expires_in_minutes.minutes.from_now)
-    reset_code.save!
+    verification_code = VerificationCode.new(user: self, code: code, expires_at: expires_in_minutes.minutes.from_now)
+    verification_code.save!
+    verification_code
   end
 
   def accessible_by?(other_user)

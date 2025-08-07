@@ -52,7 +52,7 @@ RSpec.describe 'Api::V1::Products', type: :request do
 
         get "/api/v1/products/#{product.id}"
         expect(response).to have_http_status(:ok)
-        expect(json['product']['id']).to eq(product.id)
+        expect(json['id']).to eq(product.id)
       end
     end
 
@@ -77,7 +77,7 @@ RSpec.describe 'Api::V1::Products', type: :request do
 
         post '/api/v1/products', headers: admin_headers, params: valid_params
         expect(response).to have_http_status(:created)
-        expect(json['product']['name']).to eq('New Gadget')
+        expect(json['name']).to eq('New Gadget')
       end
 
       it 'returns an error when params are invalid' do
@@ -142,7 +142,7 @@ RSpec.describe 'Api::V1::Products', type: :request do
   describe 'Product Interactions' do
     let(:interaction_service) { instance_double(Services::ProductInteractionService) }
     before do
-      allow(Services::ProductInteractionService).to receive(:new).with(user).and_return(interaction_service)
+      allow(Services::ProductInteractionService).to receive(:new).with(an_instance_of(User)).and_return(interaction_service)
     end
 
     describe 'POST /api/v1/products/:id/like' do

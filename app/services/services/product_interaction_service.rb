@@ -49,6 +49,41 @@ module Services
       )
     end
 
+    def unlike(product)
+      product_like = ProductLike.find_by(user: @user, product: product)
+
+      unless product_like
+        Services::Result.new(
+          success?: false,
+          errors: ['You have not liked this product.'],
+          status: :not_found,
+          message: 'Product like not found.'
+        )
+      end
+      product_like.destroy!
+      Services::Result.new(
+        success?: true,
+        data: {},
+        status: :ok,
+        message: 'Product unliked successfully.'
+      )
+    rescue ActiveRecord::RecordNotDestroyed => e
+      Services::Result.new(
+        success?: false,
+        errors: product_like.errors.full_messages,
+        status: :unprocessable_entity,
+        message: 'Failed to unlike product.'
+      )
+    rescue StandardError => e
+      Rails.logger.error("Failed to unlike product #{product.id} by user #{@user.id}: #{e.message}")
+      Services::Result.new(
+        success?: false,
+        errors: ['An unexpected error occurred while unliking the product.'],
+        status: :internal_server_error,
+        message: 'An unexpected error occurred.'
+      )
+    end
+
     def rate(product, rating, comment = nil)
       unless rating.present? && (1..5).include?(rating.to_i)
         return Services::Result.new(
@@ -125,6 +160,74 @@ module Services
       Services::Result.new(
         success?: false,
         errors: ['An unexpected error occurred while adding the comment.'],
+        status: :internal_server_error,
+        message: 'An unexpected error occurred.'
+      )
+    end
+
+    def update_comment(comment, new_content)
+      unless comment.user == @user || @user.admin? || @user.moderator?
+        return Services::Result.new(
+          success?: false,
+          errors: ['You are not authorized to edit this comment.'],
+          status: :forbidden,
+          message: 'Authorization failed.'
+        )
+      end
+
+      comment.update!(content: new_content)
+      Services::Result.new(
+        success?: true,
+        data: { comment: comment },
+        status: :ok,
+        message: 'Comment updated successfully.'
+      )
+    rescue ActiveRecord::RecordInvalid => e
+      Services::Result.new(
+        success?: false,
+        errors: comment.errors.full_messages,
+        status: :unprocessable_entity,
+        message: 'Failed to update comment.'
+      )
+    rescue StandardError => e
+      Rails.logger.error("Failed to update comment #{comment.id} by user #{@user.id}: #{e.message}")
+      Services::Result.new(
+        success?: false,
+        errors: ['An unexpected error occurred while updating the comment.'],
+        status: :internal_server_error,
+        message: 'An unexpected error occurred.'
+      )
+    end
+
+    def remove_comment(comment)
+      unless comment.user == @user || @user.admin? || @user.moderator?
+        return Services::Result.new(
+          success?: false,
+          errors: ['You are not authorized to remove this comment.'],
+          status: :forbidden,
+          message: 'Authorization failed.'
+        )
+      end
+
+      comment.destroy!
+      Services::Result.new(
+        success?: true,
+        data: {},
+        status: :ok,
+        message: 'Comment removed successfully.'
+      )
+    rescue ActiveRecord::RecordNotDestroyed => e
+      Services::Result.new(
+        success?: false,
+        errors: comment.errors.full_messages,
+        status: :unprocessable_entity,
+        message: 'Failed to remove comment.'
+      )
+    rescue StandardError => e
+      Rails.logger.error("Failed to remove comment #{comment.id} by user #{@user.id}: #{e.message}")
+      Services::Result.new(
+        success?: false,
+        errors: ['An unexpected error occurred while removing the comment.'],
         status: :internal_server_error,
         message: 'An unexpected error occurred.'
       )

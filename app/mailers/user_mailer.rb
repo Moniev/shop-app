@@ -3,25 +3,23 @@
 class UserMailer < ApplicationMailer
   def dial_2fa_code(user, code)
     @user = user
-    @cide = code
+    @code = code
     mail(to: @user.mail, subject: 'Your 2FA code')
   end
 
   def dial_activation_code(user, code)
     @user = user
-    @cide = code
+    @code = code
     mail(to: @user.mail, subject: 'Activation of your account')
   end
 
   def dial_reset_code(user, code)
     @user = user
-    @cide = code
+    @code = code
     mail(to: @user.mail, subject: 'Your reset code')
   end
 
-  def self.dial_notification(user, type)
-  end
+  def self.dial_notification(user, type); end
 
-  def self.dial_advertisements(users, type)
-  end
+  def self.dial_advertisements(users, type); end
 end

@@ -26,8 +26,19 @@ RSpec.configure do |config|
   config.include AuthenticationHelpers, type: :request
 
   config.before(:suite) do
-    DatabaseCleaner.strategy = :transaction
     DatabaseCleaner.clean_with(:truncation)
+  end
+
+  config.before(:each) do
+    DatabaseCleaner.strategy = :transaction
+  end
+
+  config.before(:each, type: :request) do
+    DatabaseCleaner.strategy = :truncation
+  end
+
+  config.before(:each, type: :integration) do
+    DatabaseCleaner.strategy = :truncation
   end
 
   config.around(:each) do |example|
@@ -37,9 +48,7 @@ RSpec.configure do |config|
   end
 
   config.before(:each) do
-    Rails.cache.redis.with do |conn|
-      conn.flushdb
-    end
+    Rails.cache.redis.with { |conn| conn.flushdb }
   rescue Redis::CannotConnectError => e
     puts "Could not connect to Redis to flush the cache: #{e.message}"
   end

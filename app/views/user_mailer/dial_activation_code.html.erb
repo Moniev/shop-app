@@ -8,17 +8,17 @@
       text-align: center;
       text-shadow: 0px 0px 4px rgba(255, 255, 255, 0.5);
     ">
-      Password Reset Request
+      Account Activation
     </td>
   </tr>
   <tr>
     <td style="padding: 20px 0 20px 0; color: #5a6470; font-size: 16px; line-height: 1.6; text-align: left;">
-      Hi there, <%= @user.mail %>.
+      Welcome, <%= @user.mail %>!
     </td>
   </tr>
   <tr>
     <td style="padding: 0 0 20px 0; color: #5a6470; font-size: 16px; line-height: 1.6; text-align: left;">
-      We received a request to reset your password. Use the code below to set up a new one. For your security, it will expire in 2 hours.
+      To complete your registration, please use the activation code below.
     </td>
   </tr>
   <tr>
@@ -37,11 +37,6 @@
       ">
         <%= @code %>
       </div>
-    </td>
-  </tr>
-  <tr>
-    <td style="padding: 20px 0 0 0; color: #86909a; font-size: 14px; line-height: 1.6; text-align: left;">
-      If you didn't request this change, you can safely ignore this email. No changes have been made to your account.
     </td>
   </tr>
 </table>

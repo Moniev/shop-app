@@ -23,9 +23,11 @@ module Api
       # @return [void] Sets `@products` for the Jbuilder view, implicitly rendering
       #   `index.json.jbuilder` with a status of `:ok` (200).
       def index
-        products_relation = Services::ProductCachingService.fetch_all(params[:page])
-        @products = products_relation.includes(:product_photos, :product_likes, :comments).page(params[:page])
-        bind_data_and_render(nil, 'index')
+        @products = Product.order(created_at: :desc)
+                           .page(params[:page])
+                           .includes(:product_photos, :comments, :product_likes, :product_rates)
+
+        render :index, status: :ok
       end
 
       # GET /api/v1/products/:id
@@ -73,7 +75,7 @@ module Api
       # @see Services::ProductDeletionService.call
       def destroy
         result = Services::ProductDeletionService.call(@product)
-        bind_data_and_render(result, 'show')
+        handle_destroy_response(result)
       end
 
       # POST /api/v1/products/:id/like
@@ -120,10 +122,11 @@ module Api
           if @success
             if @data.key?(:product)
               @product = @data[:product]
-            elsif @data.key?(:products)
-              @products = @data[:products]
+            elsif @product.present? && @product.persisted?
+              @product.reload
             end
-            @message = @message
+
+            @products = @data[:products] if @data.key?(:products)
             render view_name, status: @status
           else
             render json: { errors: @errors || [] }, status: @status

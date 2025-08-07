@@ -104,7 +104,9 @@ module Services
         )
       end
 
-      comment = Comment.create!(user: @user, product: product, content: content, parent: parent)
+      comment = Comment.new(user: @user, product: product, content: content, parent: parent)
+      comment.save!
+
       Services::Result.new(
         success?: true,
         data: { comment: comment },

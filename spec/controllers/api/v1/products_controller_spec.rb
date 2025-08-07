@@ -107,7 +107,7 @@ RSpec.describe Api::V1::ProductsController, type: :controller do
         get :show, params: { id: product.id }, format: :json
         expect(response).to have_http_status(:ok)
         json_response = JSON.parse(response.body)
-        expect(json_response['product']['id']).to eq(product.id)
+        expect(json_response['id']).to eq(product.id)
       end
     end
 

@@ -16,7 +16,7 @@ RSpec.describe Services::AuthenticationService, type: :service do
 
   before do
     stub_const('Services::BearerService', bearer_service_double)
-    stub_const('Services::SMSService', sms_service_double)
+    stub_const('Services::SmsService', sms_service_double)
 
     stub_const('UserMailer', user_mailer_double)
 

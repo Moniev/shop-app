@@ -1,0 +1,1312 @@
+---
+openapi: 3.0.1
+info:
+  title: API V1
+  version: v1
+paths:
+  "/api/v1/auth/login":
+    post:
+      summary: Authenticates a user and returns a JWT
+      tags:
+      - Authentication
+      parameters: []
+      responses:
+        '200':
+          description: login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: JWT for subsequent requests
+                  message:
+                    type: string
+        '202':
+          description: 2FA verification required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: 2FA code has been sent.
+        '401':
+          description: invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mail:
+                  type: string
+                  example: user@example.com
+                password:
+                  type: string
+                  example: password
+              required:
+              - mail
+              - password
+  "/api/v1/auth/verify_2fa":
+    post:
+      summary: Verifies a 2FA code
+      tags:
+      - Authentication
+      parameters: []
+      responses:
+        '200':
+          description: 2FA successful, token returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+        '401':
+          description: invalid 2FA code
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mail:
+                  type: string
+                  example: user@example.com
+                second_factor_code:
+                  type: string
+                  example: '123456'
+              required:
+              - mail
+              - second_factor_code
+  "/api/v1/auth/activate":
+    patch:
+      summary: Activates a user account
+      tags:
+      - Authentication
+      parameters: []
+      responses:
+        '200':
+          description: account activated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '422':
+          description: invalid activation code
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mail:
+                  type: string
+                  example: newuser@example.com
+                activation_code:
+                  type: string
+                  example: ABC-123
+              required:
+              - mail
+              - activation_code
+  "/api/v1/auth/password/reset":
+    post:
+      summary: Requests a password reset
+      tags:
+      - Authentication
+      parameters: []
+      responses:
+        '200':
+          description: password reset instructions sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mail:
+                  type: string
+                  example: user@example.com
+              required:
+              - mail
+    patch:
+      summary: Confirms a password reset
+      tags:
+      - Authentication
+      parameters: []
+      responses:
+        '200':
+          description: password has been reset successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '422':
+          description: invalid code or password mismatch
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reset_code:
+                  type: string
+                  example: XYZ-789
+                password:
+                  type: string
+                  example: newPassword123
+                password_confirmation:
+                  type: string
+                  example: newPassword123
+              required:
+              - reset_code
+              - password
+              - password_confirmation
+  "/api/v1/cart":
+    get:
+      summary: Displays the current user cart
+      tags:
+      - Cart
+      security:
+      - Bearer: []
+      responses:
+        '200':
+          description: cart displayed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Cart"
+  "/api/v1/cart/add/{product_id}":
+    post:
+      summary: Adds a product to the cart
+      tags:
+      - Cart
+      security:
+      - Bearer: []
+      parameters:
+      - name: product_id
+        in: path
+        format: uuid
+        required: true
+        description: ID of the product to add
+        schema:
+          type: string
+      responses:
+        '200':
+          description: product added, cart returned
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Cart"
+        '422':
+          description: invalid quantity
+        '404':
+          description: product not found
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity:
+                  type: integer
+                  example: 1
+                  description: Quantity to add
+              required:
+              - quantity
+  "/api/v1/cart/revoke/{item_id}":
+    delete:
+      summary: Removes an item from the cart
+      tags:
+      - Cart
+      security:
+      - Bearer: []
+      parameters:
+      - name: item_id
+        in: path
+        required: true
+        description: ID of the cart item to remove
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: item removed, cart returned
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Cart"
+        '404':
+          description: item not found
+  "/api/v1/cart/clear":
+    delete:
+      summary: Clears all items from the cart
+      tags:
+      - Cart
+      security:
+      - Bearer: []
+      responses:
+        '200':
+          description: cart cleared, empty cart returned
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Cart"
+  "/api/v1/diagnostics/readiness":
+    get:
+      summary: Checks if the application is ready to serve traffic
+      tags:
+      - Diagnostics
+      responses:
+        '200':
+          description: application is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Application is ready.
+                  details:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        example: ok
+        '503':
+          description: application is not ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: Application is not ready.
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                  details:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        example: error
+  "/api/v1/diagnostics/health":
+    get:
+      summary: Checks the ongoing health of the application
+      tags:
+      - Diagnostics
+      responses:
+        '200':
+          description: application is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Application is healthy.
+                  details:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        example: ok
+                      redis:
+                        type: string
+                        example: ok
+  "/api/v1/diagnostics/metrics":
+    get:
+      summary: Exposes application metrics in Prometheus format
+      tags:
+      - Diagnostics
+      responses:
+        '200':
+          description: metrics returned
+          content:
+            text/plain:
+              schema:
+                type: string
+  "/api/v1/orders":
+    get:
+      summary: Lists orders
+      tags:
+      - Orders
+      security:
+      - Bearer: []
+      responses:
+        '200':
+          description: returns only own orders
+    post:
+      summary: Creates an order from cart items
+      tags:
+      - Orders
+      security:
+      - Bearer: []
+      parameters: []
+      responses:
+        '201':
+          description: order created successfully
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Order"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                order:
+                  type: object
+                  properties:
+                    cart_item_ids:
+                      type: array
+                      items:
+                        type: integer
+  "/api/v1/orders/me":
+    get:
+      summary: Lists current user's orders
+      tags:
+      - Orders
+      security:
+      - Bearer: []
+      responses:
+        '200':
+          description: returns current user orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orders:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Order"
+  "/api/v1/orders/{id}":
+    get:
+      summary: Retrieves a single order
+      tags:
+      - Orders
+      security:
+      - Bearer: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: returns the requested order
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Order"
+        '403':
+          description: forbidden
+    put:
+      summary: Updates an order (Admin only)
+      tags:
+      - Orders
+      security:
+      - Bearer: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: order updated successfully
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Order"
+        '403':
+          description: forbidden
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                order:
+                  type: object
+                  properties:
+                    status:
+                      type: string
+                      example: shipped
+                    payment_status:
+                      type: string
+                      example: paid
+    delete:
+      summary: Deletes an order (Admin only)
+      tags:
+      - Orders
+      security:
+      - Bearer: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '204':
+          description: order deleted successfully
+        '403':
+          description: forbidden
+  "/api/v1/orders/{id}/cancel":
+    post:
+      summary: Cancels an order
+      tags:
+      - Orders
+      security:
+      - Bearer: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: order cancelled
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Order"
+  "/api/v1/payments":
+    get:
+      summary: Lists payments (Admin Only)
+      tags:
+      - Payments
+      security:
+      - Bearer: []
+      responses:
+        '200':
+          description: returns all payments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payments:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Payment"
+    post:
+      summary: Creates a payment
+      tags:
+      - Payments
+      security:
+      - Bearer: []
+      parameters: []
+      responses:
+        '201':
+          description: payment initiated successfully
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Payment"
+        '404':
+          description: order not found
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payment:
+                  type: object
+                  properties:
+                    order_id:
+                      type: integer
+                      description: ID of the order to pay for
+                  required:
+                  - order_id
+  "/api/v1/payments/{id}":
+    get:
+      summary: Retrieves a single payment
+      tags:
+      - Payments
+      security:
+      - Bearer: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: returns the requested payment
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Payment"
+        '403':
+          description: forbidden
+  "/api/v1/products":
+    get:
+      summary: Lists all products
+      tags:
+      - Products
+      parameters:
+      - name: page
+        in: query
+        required: false
+        description: Page number for pagination
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: products list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/Product"
+    post:
+      summary: Creates a product (Admin/Moderator only)
+      tags:
+      - Products
+      security:
+      - Bearer: []
+      parameters: []
+      responses:
+        '201':
+          description: product created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Product"
+        '403':
+          description: forbidden
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                product:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      example: New Awesome Gadget
+                    price:
+                      type: number
+                      example: 199.99
+                    description:
+                      type: string
+                      example: The best gadget you have ever seen.
+                  required:
+                  - name
+                  - price
+  "/api/v1/products/{id}":
+    get:
+      summary: Retrieves a single product
+      tags:
+      - Products
+      parameters:
+      - name: id
+        in: path
+        format: uuid
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: product found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Product"
+        '404':
+          description: product not found
+    put:
+      summary: Updates a product (Admin/Moderator only)
+      tags:
+      - Products
+      security:
+      - Bearer: []
+      parameters:
+      - name: id
+        in: path
+        format: uuid
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: product updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Product"
+        '403':
+          description: forbidden
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                product:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      example: Updated Gadget Name
+                    price:
+                      type: number
+                      example: 249.99
+                    description:
+                      type: string
+                      example: An updated description for this gadget.
+                  required: []
+              required:
+              - product
+    delete:
+      summary: Deletes a product (Admin/Moderator only)
+      tags:
+      - Products
+      security:
+      - Bearer: []
+      parameters:
+      - name: id
+        in: path
+        format: uuid
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: product deleted
+        '403':
+          description: forbidden
+  "/api/v1/products/{id}/like":
+    post:
+      summary: Likes a product
+      tags:
+      - Products
+      security:
+      - Bearer: []
+      parameters:
+      - name: id
+        in: path
+        format: uuid
+        required: true
+        schema:
+          type: string
+      responses:
+        '201':
+          description: product liked successfully
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Product"
+        '401':
+          description: unauthorized
+  "/api/v1/products/{id}/rate":
+    post:
+      summary: Rates a product
+      tags:
+      - Products
+      security:
+      - Bearer: []
+      parameters:
+      - name: id
+        in: path
+        format: uuid
+        required: true
+        schema:
+          type: string
+      responses:
+        '201':
+          description: product rated successfully
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Product"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                product_rating:
+                  type: object
+                  properties:
+                    rating:
+                      type: integer
+                      example: 5
+                    comment:
+                      type: string
+                      example: Fantastic product!
+                  required:
+                  - rating
+  "/api/v1/products/{id}/comment":
+    post:
+      summary: Adds a comment to a product
+      tags:
+      - Products
+      security:
+      - Bearer: []
+      parameters:
+      - name: id
+        in: path
+        format: uuid
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: comment added successfully
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Product"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                product_comment:
+                  type: object
+                  properties:
+                    content:
+                      type: string
+                      example: This is a great comment.
+                    parent_id:
+                      type: integer
+                      nullable: true
+                      description: ID of the parent comment for a reply
+                  required:
+                  - content
+  "/api/v1/stripe_payments_webhook/handle":
+    post:
+      summary: Handles Stripe webhook events
+      tags:
+      - Stripe Webhooks
+      description: Receives and processes asynchronous events from Stripe. The request
+        body should be the raw JSON payload from Stripe, and the `Stripe-Signature`
+        header must be present.
+      parameters:
+      - name: Stripe-Signature
+        in: header
+        schema:
+          type: string
+      responses:
+        '200':
+          description: webhook acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+        '400':
+          description: bad request (e.g., invalid signature)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  errors:
+                    type: array
+                    items:
+                      type: string
+        '500':
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  errors:
+                    type: array
+                    items:
+                      type: string
+        '422':
+          description: processing error
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+  "/api/v1/users":
+    get:
+      summary: Lists all users (Admin only)
+      tags:
+      - Users
+      security:
+      - Bearer: []
+      responses:
+        '200':
+          description: returns a list of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/User"
+        '403':
+          description: forbidden
+    post:
+      summary: Creates a new user (registration)
+      tags:
+      - Users
+      parameters: []
+      responses:
+        '201':
+          description: user created
+          content:
+            application/json:
+              schema:
+                all_of:
+                - "$ref": "#/components/schemas/User"
+                properties:
+                  user:
+                    "$ref": "#/components/schemas/User"
+        '422':
+          description: invalid parameters
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user:
+                  type: object
+                  properties:
+                    mail:
+                      type: string
+                      example: test@example.com
+                    password:
+                      type: string
+                      example: password123
+                    password_confirmation:
+                      type: string
+                      example: password123
+                    phone:
+                      type: string
+                      example: '123456789'
+                    user_detail_attributes:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          example: John Doe
+                  required:
+                  - mail
+                  - password
+                  - password_confirmation
+  "/api/v1/users/me":
+    get:
+      summary: Retrieves the current user profile
+      tags:
+      - Users
+      security:
+      - Bearer: []
+      responses:
+        '200':
+          description: returns current user profile
+          content:
+            application/json:
+              schema:
+                all_of:
+                - "$ref": "#/components/schemas/User"
+                properties:
+                  user:
+                    "$ref": "#/components/schemas/User"
+  "/api/v1/users/logout":
+    post:
+      summary: Logs out the current user
+      tags:
+      - Users
+      security:
+      - Bearer: []
+      responses:
+        '200':
+          description: logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  "/api/v1/users/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    get:
+      summary: Retrieves a user profile
+      tags:
+      - Users
+      security:
+      - Bearer: []
+      responses:
+        '200':
+          description: returns other user profile
+          content:
+            application/json:
+              schema:
+                all_of:
+                - "$ref": "#/components/schemas/User"
+                properties:
+                  user:
+                    "$ref": "#/components/schemas/User"
+        '403':
+          description: forbidden
+    put:
+      summary: Updates a user profile
+      tags:
+      - Users
+      security:
+      - Bearer: []
+      parameters: []
+      responses:
+        '200':
+          description: profile updated
+      requestBody:
+        content:
+          application/json:
+            schema: {}
+    delete:
+      summary: Deletes a user account
+      tags:
+      - Users
+      security:
+      - Bearer: []
+      responses:
+        '204':
+          description: other account deleted
+  "/api/v1/users/{id}/role/update":
+    patch:
+      summary: Updates a user role (Admin only)
+      tags:
+      - Users
+      security:
+      - Bearer: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: role updated
+        '403':
+          description: forbidden
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                  example: moderator
+  "/api/v1/users/{id}/update_details":
+    patch:
+      summary: Updates user details
+      tags:
+      - Users
+      security:
+      - Bearer: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: details updated
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_detail:
+                  type: object
+                  properties:
+                    first_name:
+                      type: string
+                      example: Jane
+                    last_name:
+                      type: string
+                      example: Doe
+servers:
+- url: http://{defaultHost}
+  variables:
+    defaultHost:
+      default: localhost:3000
+components:
+  securitySchemes:
+    Bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'JWT token for authentication. Use format: `Bearer <token>`'
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        mail:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum:
+          - regular
+          - moderator
+          - admin
+        active:
+          type: boolean
+        verified:
+          type: boolean
+        two_factor_enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - mail
+      - role
+      - active
+      - verified
+    UserDetail:
+      type: object
+      properties:
+        name:
+          type: string
+        first_name:
+          type: string
+          nullable: true
+        last_name:
+          type: string
+          nullable: true
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        price:
+          type: string
+          format: decimal
+        description:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - name
+      - price
+    ProductPhoto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+          description: URL to the attached image
+    Item:
+      type: object
+      properties:
+        id:
+          type: integer
+        quantity:
+          type: integer
+        price_at_purchase:
+          type: string
+          format: decimal
+        product:
+          "$ref": "#/components/schemas/Product"
+    Cart:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Item"
+        total_amount:
+          type: string
+          format: decimal
+        items_count:
+          type: integer
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        total_amount:
+          type: string
+          format: decimal
+        status:
+          type: string
+        payment_status:
+          type: string
+        order_date:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Item"
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+        order_id:
+          type: integer
+        amount:
+          type: string
+          format: decimal
+        status:
+          type: string
+        payment_method:
+          type: string
+        transaction_id:
+          type: string
+          nullable: true
+        currency:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    Comment:
+      type: object
+      properties:
+        id:
+          type: integer
+        content:
+          type: string
+        user_id:
+          type: integer
+        product_id:
+          type: string
+          format: uuid
+        parent_id:
+          type: integer
+          nullable: true
+        replies_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time

@@ -148,7 +148,7 @@ module Services
       end
 
       if user.phone.present?
-        SMSService.dial_2fa_code(user, code)
+        SmsService.dial_2fa_code(user, code)
       else
         UserMailer.dial_2fa_code(user, code).deliver_later
       end

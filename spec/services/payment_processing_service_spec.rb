@@ -15,6 +15,8 @@ RSpec.describe Services::PaymentProcessingService, type: :service do
   before do
     stub_const('Stripe::Charge', stripe_charge)
     allow(order).to receive(:mark_as_paid!)
+    order.reload
+    order.save!
   end
 
   describe '.call' do

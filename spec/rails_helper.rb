@@ -37,9 +37,11 @@ RSpec.configure do |config|
   end
 
   config.before(:each) do
-    Redis.current.flushdb
-  rescue StandardError
-    nil
+    Rails.cache.redis.with do |conn|
+      conn.flushdb
+    end
+  rescue Redis::CannotConnectError => e
+    puts "Could not connect to Redis to flush the cache: #{e.message}"
   end
 end
 

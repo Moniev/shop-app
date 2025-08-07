@@ -2,7 +2,7 @@
 
 class Product < ApplicationRecord
   has_many :product_photos, dependent: :destroy
-  has_many :comments, dependent: :destroy
+  has_many :comments, dependent: :destroy, inverse_of: :product
   has_many :product_likes, dependent: :destroy
   has_many :product_rates, dependent: :destroy
 

@@ -15,7 +15,6 @@ FactoryBot.define do
       after(:create) do |order, evaluator|
         create_list(:item, evaluator.items_count, order: order)
         order.reload
-        order.save!
       end
     end
 

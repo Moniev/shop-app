@@ -12,10 +12,10 @@ SecureHeaders::Configuration.default do |config|
   config.csp = {
     report_only: false,
     default_src: ["'none'"],
-    script_src: ["'self'"],
-    style_src: ["'self'", "'unsafe-inline'"],
+    script_src: ["'self'", "'unsafe-inline'"],
+    style_src: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
     img_src: ["'self'", 'data:'],
-    font_src: ["'self'"],
+    font_src: ["'self'", 'https://fonts.gstatic.com'],
     connect_src: ["'self'"],
     frame_ancestors: ["'none'"],
     form_action: ["'self'"],

@@ -7,6 +7,8 @@
 module Api
   module V1
     class N8nWebhookController < Api::ApplicationController
+      skip_before_action :authenticate_user!
+
     end
   end
 end

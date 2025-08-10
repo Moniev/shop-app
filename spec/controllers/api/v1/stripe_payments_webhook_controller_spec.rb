@@ -7,7 +7,7 @@ RSpec.describe Services::StripeWebhookHandlerService, type: :service do
 
   let(:payload) { { id: 'evt_123' }.to_json }
   let(:sig_header) { 't=123,v1=abc' }
-  let(:endpoint_secret) { 'whsec_test_secret' }
+  let(:endpoint_secret) { ENV.fetch('STRIPE_WEBHOOK_SECRET') }
   let(:stripe_event) { instance_double(Stripe::Event) }
 
   let(:verification_success_result) { Services::Result.new(success?: true, data: { event: stripe_event }) }

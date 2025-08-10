@@ -153,6 +153,7 @@ module Api
         product_id = params[:product_id] || add_product_params[:product_id]
         @product = Product.find_by(id: product_id)
         render json: { errors: ['Product not found.'] }, status: :not_found unless @product
+        @product
       end
 
       def bind_data_and_render(result = nil, view_name = 'show')

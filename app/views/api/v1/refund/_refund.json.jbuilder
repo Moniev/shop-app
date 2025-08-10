@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
-json.cache! ['refund_partial', refund.id, refund.updated_at] do
+json.cache! [
+  'refund_partial',
+  refund.id,
+  refund.updated_at,
+  refund.order.maximum(:updated_at) || Time.current
+] do
   json.id refund.id
   json.order_id refund.order_id
   json.status refund.status

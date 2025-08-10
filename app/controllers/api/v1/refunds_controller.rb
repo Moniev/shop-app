@@ -26,14 +26,24 @@ module Api
       end
 
       def me
+        @refunds = current_user.refunds.includes(:refunds).refund(created_at: :desc)
+        bind_data_and_render(nil, 'index')
       end
 
       def update
+        result = Services::RefundUpdateService.call(@refund, update_refund_params)
+        bind_data_and_render(result, 'show')
       end
 
-      def destroy; end
+      def destroy
+        result = Services::RefundDeletionService.call(@refund)
+        handle_destroy_response(result)
+      end
 
       private
+
+      def update_refund_params
+      end
 
       def refund_params
         params.fetch(:refund, {}).permit(:status, :payment_status)
@@ -48,13 +58,24 @@ module Api
       end
 
       def bind_data_and_render(result, view_name)
+        if result
+          bind_data(result)
+          if @success
+            if @data.key?(:refund)
+              @refund = data[:refund]
+            elsif @data.key?(:refunds)
+              @refunds = @data[:products] if @data.key?(:refunds)
+            end
+          end
+        else
+
+        end
       end
 
       def handle_error_reponse
       end
 
-      def refund_management_service
-        @refund_management_service ||= Services::RefundManagementService.new(@refund)
+      def handle_destroy_response
       end
     end
   end

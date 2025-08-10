@@ -84,10 +84,10 @@ RSpec.describe Services::ProductInteractionService, type: :service do
         end.not_to change(ProductRate, :count)
       end
 
-      it 'returns an unprocessable_entity failure result' do
+      it 'returns an unprocessable_content failure result' do
         result = service.rate(product, 0)
         expect(result.success?).to be false
-        expect(result.status).to eq(:unprocessable_entity)
+        expect(result.status).to eq(:unprocessable_content)
         expect(result.errors).to include('Rating must be an integer between 1 and 5.')
       end
     end

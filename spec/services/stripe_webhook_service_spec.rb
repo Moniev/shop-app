@@ -11,9 +11,9 @@ RSpec.describe Services::StripeWebhookService, type: :service do
     context 'with a "charge.succeeded" event' do
       let(:event) { OpenStruct.new(type: 'charge.succeeded', data: OpenStruct.new(object: charge_object)) }
 
-      it 'updates the payment status to completed' do
+      it 'updates the payment status to paid' do
         described_class.handle(event)
-        expect(payment.reload.status).to eq('completed')
+        expect(payment.reload.status).to eq('paid')
       end
 
       it 'marks the associated order as paid' do
@@ -27,11 +27,11 @@ RSpec.describe Services::StripeWebhookService, type: :service do
         expect(result.status).to eq(:ok)
       end
 
-      context 'when the payment is already completed' do
-        before { payment.update!(status: :completed) }
+      context 'when the payment is already paid' do
+        before { payment.update!(status: :paid) }
 
         it 'does not try to update the payment again' do
-          expect(payment).not_to receive(:mark_as_completed!)
+          expect(payment).not_to receive(:mark_as_paid!)
           described_class.handle(event)
         end
       end
@@ -55,7 +55,7 @@ RSpec.describe Services::StripeWebhookService, type: :service do
 
     context 'with a "charge.refunded" event' do
       let(:event) { OpenStruct.new(type: 'charge.refunded', data: OpenStruct.new(object: charge_object)) }
-      before { payment.update!(status: :completed) }
+      before { payment.update!(status: :paid) }
 
       it 'updates the payment status to refunded' do
         described_class.handle(event)
@@ -81,8 +81,8 @@ RSpec.describe Services::StripeWebhookService, type: :service do
 
       it 'returns a successful result' do
         result = described_class.handle(event)
-        expect(result.success?).to be true
-        expect(result.status).to eq(:ok)
+        expect(result.success?).to be false
+        expect(result.status).to eq(:bad_request)
       end
     end
 

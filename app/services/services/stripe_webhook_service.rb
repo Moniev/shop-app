@@ -1,33 +1,23 @@
 # frozen_string_literal: true
 
-# Provides a collection of service objects that encapsulate specific business logic
-# or external integrations.
-#
-# This module aims to keep controllers thin and models focused on data persistence
-# by housing operations that don't fit naturally within a single model's scope
-# or represent a cross-cutting concern. Examples include authentication flows,
-# payment processing, or external API interactions
 module Services
   class StripeWebhookService
+    # Handles incoming Stripe webhook events.
+    #
+    # @param event [Stripe::Event] The event object from Stripe.
+    # @return [Services::Result] A Result object.
     def self.handle(event)
-      charge = event.data.object
       case event.type
       when 'charge.succeeded'
-        process_charge_succeeded(charge)
+        handle_charge_succeeded(event.data.object)
       when 'charge.failed'
-        process_charge_failed(charge)
+        handle_charge_failed(event.data.object)
       when 'charge.refunded'
-        process_charge_refunded(charge)
+        handle_charge_refunded(event.data.object)
       else
-        Rails.logger.warn "Webhook: Unhandled Stripe event type: #{event.type}"
-        return Services::Result.new(
-          success?: true,
-          message: "Unhandled Stripe event type: #{event.type}",
-          status: :ok
-        )
+        Rails.logger.warn("Webhook: Unhandled Stripe event type: #{event.type}")
+        Services::Result.new(success?: false, status: :bad_request, message: "Unhandled event type: #{event.type}")
       end
-      Services::Result.new(success?: true, message: "Webhook handled successfully for event type: #{event.type}",
-                           status: :ok)
     rescue StandardError => e
       Rails.logger.error("Webhook: Error processing Stripe event #{event.id} (#{event.type}): #{e.message}")
       Services::Result.new(
@@ -40,41 +30,56 @@ module Services
 
     private
 
-    def self.process_charge_succeeded(charge)
+    def self.handle_charge_succeeded(charge)
       payment = Payment.find_by(stripe_charge_id: charge.id)
-      return unless payment
-      return if payment.completed?
+      return Services::Result.new(success?: true, status: :ok, message: 'Payment not found.') unless payment
+      return Services::Result.new(success?: true, status: :ok, message: 'Payment already paid.') if payment.status_paid?
 
       ActiveRecord::Base.transaction do
-        payment.mark_as_completed!
-        payment.order.mark_as_paid!
+        payment.update!(status: :paid)
+        payment.order.update!(payment_status: :paid)
       end
-      Rails.logger.info "Webhook: Stripe charge succeeded for Payment ##{payment.id}"
+
+      Rails.logger.info "Webhook: Charge succeeded for Payment ##{payment.id}"
+      Services::Result.new(success?: true, status: :ok)
     end
 
-    def self.process_charge_failed(charge)
+    def self.handle_charge_failed(charge)
       payment = Payment.find_by(stripe_charge_id: charge.id)
-      return unless payment
-      return if payment.failed?
+      return Services::Result.new(success?: true, status: :ok, message: 'Payment not found.') unless payment
+
+      if payment.status_failed?
+        return Services::Result.new(success?: true, status: :ok,
+                                    message: 'Payment already failed.')
+      end
 
       failure_message = charge.failure_message || 'Charge failed for an unknown reason.'
+
       ActiveRecord::Base.transaction do
-        payment.mark_as_failed!(failure_message)
+        payment.update!(status: :failed, error_message: failure_message)
         payment.order.update!(payment_status: :failed)
       end
-      Rails.logger.info "Webhook: Stripe charge failed for Payment ##{payment.id}"
+
+      Rails.logger.info "Webhook: Charge failed for Payment ##{payment.id}"
+      Services::Result.new(success?: true, status: :ok)
     end
 
-    def self.process_charge_refunded(charge)
+    def self.handle_charge_refunded(charge)
       payment = Payment.find_by(stripe_charge_id: charge.id)
-      return unless payment
-      return if payment.refunded?
+      return Services::Result.new(success?: true, status: :ok, message: 'Payment not found.') unless payment
+
+      if payment.status_refunded?
+        return Services::Result.new(success?: true, status: :ok,
+                                    message: 'Payment already refunded.')
+      end
 
       ActiveRecord::Base.transaction do
         payment.update!(status: :refunded)
         payment.order.update!(status: :refunded, payment_status: :refunded)
       end
-      Rails.logger.info "Webhook: Stripe charge refunded for Payment ##{payment.id}"
+
+      Rails.logger.info "Webhook: Charge refunded for Payment ##{payment.id}"
+      Services::Result.new(success?: true, status: :ok)
     end
   end
 end

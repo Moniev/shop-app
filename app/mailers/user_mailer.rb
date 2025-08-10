@@ -19,7 +19,7 @@ class UserMailer < ApplicationMailer
     mail(to: @user.mail, subject: 'Your reset code')
   end
 
-  def self.dial_notification(user, type); end
+  def dial_notification(user, type); end
 
-  def self.dial_advertisements(users, type); end
+  def dial_advertisements(users, type); end
 end

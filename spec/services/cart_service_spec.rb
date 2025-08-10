@@ -41,14 +41,14 @@ RSpec.describe Services::CartService, type: :service do
         expect(result.status).to eq(:not_found)
       end
 
-      it 'returns an unprocessable_entity error for zero or negative quantity' do
+      it 'returns an unprocessable_content error for zero or negative quantity' do
         result_zero = service.add_product(product.id, 0)
         result_negative = service.add_product(product.id, -5)
 
         expect(result_zero.success?).to be false
-        expect(result_zero.status).to eq(:unprocessable_entity)
+        expect(result_zero.status).to eq(:unprocessable_content)
         expect(result_negative.success?).to be false
-        expect(result_negative.status).to eq(:unprocessable_entity)
+        expect(result_negative.status).to eq(:unprocessable_content)
       end
     end
 
@@ -62,7 +62,7 @@ RSpec.describe Services::CartService, type: :service do
         result = service.add_product(product.id, 1)
 
         expect(result.success?).to be false
-        expect(result.status).to eq(:unprocessable_entity)
+        expect(result.status).to eq(:unprocessable_content)
         expect(result.errors).to include('Quantity must be greater than 0')
       end
     end

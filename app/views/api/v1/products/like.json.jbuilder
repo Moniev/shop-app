@@ -2,6 +2,5 @@
 
 json.message @message
 json.product do
-  json.id @product.id
-  json.likes_count @product.product_likes.count
+  json.partial! 'api/v1/products/product', product: @product
 end

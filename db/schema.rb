@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_25_205037) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_10_184448) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -52,6 +52,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_25_205037) do
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
   end
 
+  create_table "bans", force: :cascade do |t|
+    t.text "reason"
+    t.datetime "expires_at"
+    t.bigint "user_id", null: false
+    t.bigint "owner_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["owner_id"], name: "index_bans_on_owner_id"
+    t.index ["user_id"], name: "index_bans_on_user_id"
+  end
+
   create_table "blacklisted_tokens", force: :cascade do |t|
     t.string "token", null: false
     t.bigint "owner_id", null: false
@@ -61,6 +72,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_25_205037) do
     t.index ["expires_at"], name: "index_blacklisted_tokens_on_expires_at"
     t.index ["owner_id"], name: "index_blacklisted_tokens_on_owner_id"
     t.index ["token"], name: "index_blacklisted_tokens_on_token", unique: true
+  end
+
+  create_table "categories", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "name", null: false
+    t.uuid "parent_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_categories_on_name", unique: true
+    t.index ["parent_id"], name: "index_categories_on_parent_id"
   end
 
   create_table "comments", force: :cascade do |t|
@@ -151,6 +171,16 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_25_205037) do
     t.datetime "updated_at", null: false
     t.index ["order_id"], name: "index_payments_on_order_id"
     t.index ["transaction_id"], name: "index_payments_on_transaction_id", unique: true
+  end
+
+  create_table "product_categories", id: false, force: :cascade do |t|
+    t.uuid "product_id", null: false
+    t.uuid "category_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category_id"], name: "index_product_categories_on_category_id"
+    t.index ["product_id", "category_id"], name: "index_product_categories_on_product_id_and_category_id", unique: true
+    t.index ["product_id"], name: "index_product_categories_on_product_id"
   end
 
   create_table "product_likes", force: :cascade do |t|
@@ -266,7 +296,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_25_205037) do
   add_foreign_key "activation_codes", "users"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "bans", "users"
+  add_foreign_key "bans", "users", column: "owner_id"
   add_foreign_key "blacklisted_tokens", "users", column: "owner_id"
+  add_foreign_key "categories", "categories", column: "parent_id"
   add_foreign_key "comments", "comments", column: "parent_id"
   add_foreign_key "comments", "products"
   add_foreign_key "comments", "users"
@@ -277,6 +310,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_25_205037) do
   add_foreign_key "locations", "user_details"
   add_foreign_key "orders", "users"
   add_foreign_key "payments", "orders"
+  add_foreign_key "product_categories", "categories"
+  add_foreign_key "product_categories", "products"
   add_foreign_key "product_likes", "products"
   add_foreign_key "product_likes", "users"
   add_foreign_key "product_photos", "products"

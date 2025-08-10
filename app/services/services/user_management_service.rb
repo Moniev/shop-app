@@ -39,7 +39,7 @@ module Services
           Services::Result.new(
             success?: false,
             errors: ['Invalid or expired activation code.'],
-            status: :unprocessable_entity,
+            status: :unprocessable_content,
             message: 'Account activation failed: invalid or expired code.'
           )
         end
@@ -48,7 +48,7 @@ module Services
         Services::Result.new(
           success?: false,
           errors: user.errors.full_messages,
-          status: :unprocessable_entity,
+          status: :unprocessable_content,
           message: 'Account activation failed due to data validation.'
         )
       rescue StandardError => e
@@ -91,7 +91,7 @@ module Services
           Services::Result.new(
             success?: false,
             errors: ['Invalid or expired verification code.'],
-            status: :unprocessable_entity,
+            status: :unprocessable_content,
             message: 'Account verification failed: invalid or expired code.'
           )
         end
@@ -100,7 +100,7 @@ module Services
         Services::Result.new(
           success?: false,
           errors: user.errors.full_messages,
-          status: :unprocessable_entity,
+          status: :unprocessable_content,
           message: 'Account verification failed due to data validation.'
         )
       rescue StandardError => e
@@ -112,14 +112,10 @@ module Services
           message: 'An unexpected error occurred.'
         )
       end
-
-      def blacklist_user(id)
-        user = User.find(id)
-        user.w
-      end
-
-      def whitelist_user(id)
-      end
     end
+
+    def blacklist_user(id); end
+
+    def whitelist_user(id); end
   end
 end

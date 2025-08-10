@@ -13,7 +13,7 @@ module Services
       ActiveRecord::Base.transaction do
         product.destroy!
 
-        ProductCachingService.invalidate_index_pages
+        Services::ProductCachingService.invalidate_index_pages
       end
       Services::Result.new(
         success?: true,
@@ -25,7 +25,7 @@ module Services
       Services::Result.new(
         success?: false,
         errors: product.errors.full_messages,
-        status: :unprocessable_entity,
+        status: :unprocessable_content,
         message: 'Product deletion failed.'
       )
     rescue StandardError => e

@@ -66,11 +66,11 @@ RSpec.describe Services::PaymentCreationService, type: :service do
         allow(user.orders).to receive(:find_by).with(id: order.id).and_return(order)
       end
 
-      it 'returns an unprocessable_entity failure result' do
+      it 'returns an unprocessable_content failure result' do
         result = described_class.call(user: user, order_id: order.id, stripe_token: stripe_token)
 
         expect(result.success?).to be false
-        expect(result.status).to eq(:unprocessable_entity)
+        expect(result.status).to eq(:unprocessable_content)
         expect(result.errors).to include('This order has already been paid for.')
       end
 

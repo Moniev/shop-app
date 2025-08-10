@@ -2,7 +2,5 @@
 
 json.message @message
 json.product do
-  json.id @product.id
-  json.average_rating @product.average_rating
-  json.ratings_count @product.product_ratings.count if @product.respond_to?(:product_ratings)
+  json.partial! 'api/v1/products/product', product: @product
 end

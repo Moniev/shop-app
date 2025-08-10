@@ -14,54 +14,76 @@ module Services
         order: order,
         amount: order.total_amount,
         payment_method: 'stripe',
-        status: :pending
+        status: :unpaid
       )
 
       unless payment.valid?
-        return Services::Result.new(success?: false, errors: payment.errors.full_messages,
-                                    status: :unprocessable_entity)
+        order.mark_as_failed!
+        return Services::Result.new(
+          success?: false,
+          errors: payment.errors.full_messages,
+          status: :unprocessable_content
+        )
       end
 
-      begin
-        payment.save!
+      payment.save!
 
-        charge = Stripe::Charge.create(
-          amount: (payment.amount * 100).to_i,
-          currency: 'PLN',
-          source: stripe_token,
-          description: "Order #{order.id} for user #{order.user.mail}",
-          metadata: { order_id: order.id, payment_id: payment.id }
-        )
+      charge = Stripe::Charge.create(
+        amount: (payment.amount * 100).to_i,
+        currency: 'pln',
+        source: stripe_token,
+        description: "Order #{order.id} for user #{order.user.mail}",
+        metadata: { order_id: order.id, payment_id: payment.id }
+      )
 
-        payment.update!(
-          stripe_charge_id: charge.id,
-          transaction_id: charge.id,
-          status: :completed,
-          currency: charge.currency
-        )
-        order.mark_as_paid!
+      payment.update!(
+        stripe_charge_id: charge.id,
+        transaction_id: charge.id,
+        status: :paid,
+        currency: charge.currency
+      )
+      order.mark_as_paid!
 
-        Services::Result.new(success?: true, data: { payment: payment }, status: :created,
-                             message: 'Payment processed successfully.')
-      rescue Stripe::CardError => e
-        err = e.json_body[:error]
-        payment.update(status: :failed, error_message: err[:message])
-        Services::Result.new(success?: false, errors: [err[:message]], status: :unprocessable_entity,
-                             message: 'Payment failed due to card error.')
-      rescue Stripe::StripeError => e
-        payment.update(status: :failed, error_message: e.message)
-        Services::Result.new(success?: false, errors: [e.message], status: :internal_server_error,
-                             message: 'An error occurred with the payment gateway.')
-      rescue ActiveRecord::RecordInvalid => e
-        Rails.logger.error("Payment record validation failed: #{e.record.errors.full_messages.join(', ')}")
-        Services::Result.new(success?: false, errors: e.record.errors.full_messages, status: :unprocessable_entity,
-                             message: 'Failed to record payment.')
-      rescue StandardError => e
-        Rails.logger.error("Unexpected payment processing error: #{e.message}")
-        payment.update(status: :failed, error_message: 'An unexpected error occurred.')
-        Services::Result.new(success?: false, errors: ['An unexpected error occurred during payment processing.'],
-                             status: :internal_server_error, message: 'An unexpected error occurred.')
-      end
+      Services::Result.new(
+        success?: true,
+        data: { payment: payment },
+        status: :created,
+        message: 'Payment processed successfully.'
+      )
+    rescue Stripe::CardError => e
+      err = e.json_body[:error]
+      payment.update(status: :failed, error_message: err[:message])
+      Services::Result.new(
+        success?: false,
+        errors: [err[:message]],
+        status: :unprocessable_content,
+        message: 'Payment failed due to card error.'
+      )
+    rescue Stripe::StripeError => e
+      payment.update(status: :failed, error_message: e.message)
+      Services::Result.new(
+        success?: false,
+        errors: [e.message],
+        status: :internal_server_error,
+        message: 'An error occurred with the payment gateway.'
+      )
+    rescue ActiveRecord::RecordInvalid => e
+      Rails.logger.error("Payment record validation failed: #{e.record.errors.full_messages.join(', ')}")
+      Services::Result.new(
+        success?: false,
+        errors: e.record.errors.full_messages,
+        status: :unprocessable_content,
+        message: 'Failed to record payment.'
+      )
+    rescue StandardError => e
+      Rails.logger.error("Unexpected payment processing error: #{e.message}")
+      payment.update(status: :failed, error_message: 'An unexpected error occurred.')
+      Services::Result.new(
+        success?: false,
+        errors: ['An unexpected error occurred during payment processing.'],
+        status: :internal_server_error,
+        message: 'An unexpected error occurred.'
+      )
     end
   end
 end

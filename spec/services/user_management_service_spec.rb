@@ -19,15 +19,15 @@ RSpec.describe Services::UserManagementService, type: :service do
       end
 
       it 'destroys the used activation code' do
-        expect {
+        expect do
           described_class.activate(user, valid_code)
-        }.to change(ActivationCode, :count).by(-1)
+        end.to change(ActivationCode, :count).by(-1)
       end
 
       it 'creates a new verification code' do
-        expect {
+        expect do
           described_class.activate(user, valid_code)
-        }.to change(VerificationCode, :count).by(1)
+        end.to change(VerificationCode, :count).by(1)
       end
 
       it 'returns a successful result' do
@@ -47,10 +47,10 @@ RSpec.describe Services::UserManagementService, type: :service do
         expect(user.reload.active).to be false
       end
 
-      it 'returns an unprocessable_entity failure result' do
+      it 'returns an unprocessable_content failure result' do
         result = described_class.activate(user, 'invalid_code')
         expect(result.success?).to be false
-        expect(result.status).to eq(:unprocessable_entity)
+        expect(result.status).to eq(:unprocessable_content)
         expect(result.errors).to include('Invalid or expired activation code.')
       end
     end
@@ -89,9 +89,9 @@ RSpec.describe Services::UserManagementService, type: :service do
       end
 
       it 'destroys the used verification code' do
-        expect {
+        expect do
           described_class.verify(user, valid_code)
-        }.to change(VerificationCode, :count).by(-1)
+        end.to change(VerificationCode, :count).by(-1)
       end
 
       it 'returns a successful result' do
@@ -107,10 +107,10 @@ RSpec.describe Services::UserManagementService, type: :service do
         expect(user.reload.verified).to be false
       end
 
-      it 'returns an unprocessable_entity failure result' do
+      it 'returns an unprocessable_content failure result' do
         result = described_class.verify(user, 'invalid_code')
         expect(result.success?).to be false
-        expect(result.status).to eq(:unprocessable_entity)
+        expect(result.status).to eq(:unprocessable_content)
       end
     end
   end

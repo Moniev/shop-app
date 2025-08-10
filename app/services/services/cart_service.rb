@@ -35,7 +35,7 @@ module Services
         return Services::Result.new(
           success?: false,
           errors: ['Quantity must be greater than 0.'],
-          status: :unprocessable_entity,
+          status: :unprocessable_content,
           message: 'Quantity must be greater than 0.'
         )
       end
@@ -56,7 +56,7 @@ module Services
         Services::Result.new(
           success?: false,
           errors: e.record.errors.full_messages,
-          status: :unprocessable_entity,
+          status: :unprocessable_content,
           message: 'Failed to add product due to validation errors.'
         )
       rescue StandardError => e
@@ -103,7 +103,7 @@ module Services
           Services::Result.new(
             success?: false,
             errors: ['Quantity to remove must be positive or nil to remove all.'],
-            status: :unprocessable_entity,
+            status: :unprocessable_content,
             message: 'Invalid quantity to remove.'
           )
         end

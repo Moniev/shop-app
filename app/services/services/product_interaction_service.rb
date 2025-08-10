@@ -36,7 +36,7 @@ module Services
       Services::Result.new(
         success?: false,
         errors: product_like.errors.full_messages,
-        status: :unprocessable_entity,
+        status: :unprocessable_content,
         message: 'Failed to like product.'
       )
     rescue StandardError => e
@@ -71,7 +71,7 @@ module Services
       Services::Result.new(
         success?: false,
         errors: product_like.errors.full_messages,
-        status: :unprocessable_entity,
+        status: :unprocessable_content,
         message: 'Failed to unlike product.'
       )
     rescue StandardError => e
@@ -89,7 +89,7 @@ module Services
         return Services::Result.new(
           success?: false,
           errors: ['Rating must be an integer between 1 and 5.'],
-          status: :unprocessable_entity,
+          status: :unprocessable_content,
           message: 'Invalid rating value.'
         )
       end
@@ -106,7 +106,7 @@ module Services
       Services::Result.new(
         success?: false,
         errors: product_rate.errors.full_messages,
-        status: :unprocessable_entity,
+        status: :unprocessable_content,
         message: 'Failed to rate product.'
       )
     rescue StandardError => e
@@ -124,7 +124,7 @@ module Services
         return Services::Result.new(
           success?: false,
           errors: ['Comment content cannot be empty.'],
-          status: :unprocessable_entity,
+          status: :unprocessable_content,
           message: 'Empty comment content.'
         )
       end
@@ -134,7 +134,7 @@ module Services
         return Services::Result.new(
           success?: false,
           errors: ['Invalid parent comment ID.'],
-          status: :unprocessable_entity,
+          status: :unprocessable_content,
           message: 'Invalid parent comment.'
         )
       end
@@ -152,7 +152,7 @@ module Services
       Services::Result.new(
         success?: false,
         errors: comment.errors.full_messages,
-        status: :unprocessable_entity,
+        status: :unprocessable_content,
         message: 'Failed to add comment.'
       )
     rescue StandardError => e
@@ -186,7 +186,7 @@ module Services
       Services::Result.new(
         success?: false,
         errors: comment.errors.full_messages,
-        status: :unprocessable_entity,
+        status: :unprocessable_content,
         message: 'Failed to update comment.'
       )
     rescue StandardError => e
@@ -220,7 +220,7 @@ module Services
       Services::Result.new(
         success?: false,
         errors: comment.errors.full_messages,
-        status: :unprocessable_entity,
+        status: :unprocessable_content,
         message: 'Failed to remove comment.'
       )
     rescue StandardError => e

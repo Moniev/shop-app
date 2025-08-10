@@ -62,9 +62,8 @@ describe 'Payments API' do
 
           before do
             allow(Services::PaymentProcessingService).to receive(:call).and_return(
-              # POPRAWKA: Używamy traita :completed z fabryki, zamiast ręcznie ustawiać status.
               Services::Result.new(success?: true, status: :created,
-                                   data: { payment: create(:payment, :completed, order: order) })
+                                   data: { payment: create(:payment, :paid, order: order) })
             )
           end
           run_test!

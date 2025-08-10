@@ -2,7 +2,7 @@
 
 json.cache! ['orders_me', @orders.map(&:id).sort, @orders.maximum(:updated_at) || Time.current, params[:page]] do
   json.orders @orders do |order|
-    json.partial! 'order', order: order
+    json.partial! 'api/v1/orders/order', order: order
   end
 
   if @orders.respond_to?(:current_page)

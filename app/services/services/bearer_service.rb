@@ -88,7 +88,7 @@ module Services
         return Services::Result.new(
           success?: false,
           errors: ['Invalid token for blacklisting.'],
-          status: :unprocessable_entity,
+          status: :unprocessable_content,
           message: 'Token could not be decoded for blacklisting.'
         )
       end

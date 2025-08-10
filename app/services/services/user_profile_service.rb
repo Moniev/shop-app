@@ -18,7 +18,7 @@ module Services
         Services::Result.new(success?: true, data: { user: @user }, status: :ok,
                              message: 'Profile updated successfully.')
       else
-        Services::Result.new(success?: false, errors: @user.errors.full_messages, status: :unprocessable_entity,
+        Services::Result.new(success?: false, errors: @user.errors.full_messages, status: :unprocessable_content,
                              message: 'Profile update failed.')
       end
     end
@@ -32,7 +32,7 @@ module Services
                              message: 'Location updated successfully.')
       else
         Services::Result.new(success?: false, errors: location.errors.full_messages,
-                             status: :unprocessable_entity, message: 'Location update failed.')
+                             status: :unprocessable_content, message: 'Location update failed.')
       end
     end
 
@@ -44,7 +44,7 @@ module Services
                              message: 'Personal details updated successfully.')
       else
         Services::Result.new(success?: false, errors: user_detail.errors.full_messages,
-                             status: :unprocessable_entity, message: 'Personal details update failed.')
+                             status: :unprocessable_content, message: 'Personal details update failed.')
       end
     end
 
@@ -66,30 +66,41 @@ module Services
                              message: 'Entrepreneur details updated successfully.')
       else
         Services::Result.new(success?: false, errors: entrepreneur_detail.errors.full_messages,
-                             status: :unprocessable_entity, message: 'Entrepreneur details update failed.')
+                             status: :unprocessable_content, message: 'Entrepreneur details update failed.')
       end
     end
 
     def destroy_user
-      if @user.destroy
-        Services::Result.new(success?: true, status: :no_content, message: 'User account deleted successfully.')
-      else
-        Services::Result.new(success?: false, errors: @user.errors.full_messages, status: :unprocessable_entity,
-                             message: 'Failed to delete user account.')
-      end
+      @user.destroy!
+      Services::Result.new(success?: true, status: :no_content, message: 'User account deleted successfully.')
+    rescue ActiveRecord::RecordNotDestroyed => e
+      Services::Result.new(
+        success?: false,
+        errors: @user.errors.full_messages.presence || [e.message],
+        status: :unprocessable_content,
+        message: 'Failed to delete user account.'
+      )
+    rescue StandardError => e
+      Rails.logger.error("Unexpected error during user deletion for ID #{@user.id}: #{e.message}")
+      Services::Result.new(
+        success?: false,
+        errors: ['An unexpected error occurred.'],
+        status: :internal_server_error,
+        message: 'An unexpected error occurred.'
+      )
     end
 
     def update_role(new_role)
       unless User.roles.keys.include?(new_role.to_s)
         return Services::Result.new(success?: false, errors: ["Invalid role: #{new_role}"],
-                                    status: :unprocessable_entity, message: 'Invalid role provided.')
+                                    status: :unprocessable_content, message: 'Invalid role provided.')
       end
 
       if @user.update(role: new_role)
         Services::Result.new(success?: true, data: { user: @user }, status: :ok,
                              message: "User role updated to #{new_role} successfully.")
       else
-        Services::Result.new(success?: false, errors: @user.errors.full_messages, status: :unprocessable_entity,
+        Services::Result.new(success?: false, errors: @user.errors.full_messages, status: :unprocessable_content,
                              message: 'User role update failed.')
       end
     rescue StandardError => e

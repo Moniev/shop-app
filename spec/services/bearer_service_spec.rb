@@ -117,10 +117,10 @@ RSpec.describe Services::BearerService, type: :service do
     end
 
     context 'with an invalid token' do
-      it 'returns an unprocessable_entity error' do
+      it 'returns an unprocessable_content error' do
         result = described_class.blacklist!('invalid.token.string')
         expect(result.success?).to be false
-        expect(result.status).to eq(:unprocessable_entity)
+        expect(result.status).to eq(:unprocessable_content)
       end
     end
   end

@@ -25,7 +25,7 @@ module Services
         return Services::Result.new(
           success?: false,
           errors: ['This order has already been paid for.'],
-          status: :unprocessable_entity,
+          status: :unprocessable_content,
           message: 'This order has already been paid for.'
         )
       end

@@ -18,7 +18,7 @@ module Services
         Services::Result.new(success?: true, data: { order: @order }, status: :ok,
                              message: 'Order updated successfully.')
       else
-        Services::Result.new(success?: false, errors: @order.errors.full_messages, status: :unprocessable_entity,
+        Services::Result.new(success?: false, errors: @order.errors.full_messages, status: :unprocessable_content,
                              message: 'Order update failed due to validation errors.')
       end
     rescue StandardError => e
@@ -32,7 +32,7 @@ module Services
         return Services::Result.new(
           success?: false,
           errors: ["Cannot cancel order with status: #{@order.status}"],
-          status: :unprocessable_entity,
+          status: :unprocessable_content,
           message: "Cannot cancel order with status: #{@order.status}."
         )
       end
@@ -41,7 +41,7 @@ module Services
         Services::Result.new(success?: true, data: { order: @order }, status: :ok,
                              message: 'Order cancelled successfully.')
       else
-        Services::Result.new(success?: false, errors: @order.errors.full_messages, status: :unprocessable_entity,
+        Services::Result.new(success?: false, errors: @order.errors.full_messages, status: :unprocessable_content,
                              message: 'Order cancellation failed due to validation errors.')
       end
     rescue StandardError => e
@@ -62,7 +62,7 @@ module Services
     def add_product(product, quantity)
       unless product && quantity.to_i.positive?
         return Services::Result.new(success?: false, errors: ['Invalid product or quantity.'],
-                                    status: :unprocessable_entity, message: 'Failed to add product: invalid input.')
+                                    status: :unprocessable_content, message: 'Failed to add product: invalid input.')
       end
 
       ActiveRecord::Base.transaction do
@@ -76,7 +76,7 @@ module Services
       Services::Result.new(success?: true, data: { order: @order }, status: :ok,
                            message: 'Product added to order successfully.')
     rescue ActiveRecord::RecordInvalid => e
-      Services::Result.new(success?: false, errors: e.record.errors.full_messages, status: :unprocessable_entity,
+      Services::Result.new(success?: false, errors: e.record.errors.full_messages, status: :unprocessable_content,
                            message: 'Failed to add product to order due to validation errors.')
     rescue StandardError => e
       Rails.logger.error("Failed to add product to order ID #{@order.id}: #{e.message}")
@@ -99,11 +99,11 @@ module Services
           quantity_to_remove = quantity.to_i
           if quantity_to_remove <= 0
             return Services::Result.new(success?: false, errors: ['Quantity must be a positive number.'],
-                                        status: :unprocessable_entity, message: 'Invalid quantity.')
+                                        status: :unprocessable_content, message: 'Invalid quantity.')
           end
           if quantity_to_remove > item.quantity
             return Services::Result.new(success?: false, errors: ["Cannot remove #{quantity_to_remove} items, only #{item.quantity} present."],
-                                        status: :unprocessable_entity, message: 'Quantity to remove exceeds quantity in order.')
+                                        status: :unprocessable_content, message: 'Quantity to remove exceeds quantity in order.')
           end
 
           item.decrement!(:quantity, quantity_to_remove)
@@ -116,7 +116,7 @@ module Services
       Services::Result.new(success?: true, data: { order: @order.reload }, status: :ok,
                            message: 'Product removed from order successfully.')
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotDestroyed => e
-      Services::Result.new(success?: false, errors: e.record.errors.full_messages, status: :unprocessable_entity,
+      Services::Result.new(success?: false, errors: e.record.errors.full_messages, status: :unprocessable_content,
                            message: 'Failed to remove product from order due to validation errors.')
     rescue StandardError => e
       Rails.logger.error("Failed to remove product from order ID #{@order.id}: #{e.message}")
@@ -138,7 +138,7 @@ module Services
         return Services::Result.new(
           success?: false,
           errors: ["'#{status_key}' is not a valid #{attribute}."],
-          status: :unprocessable_entity,
+          status: :unprocessable_content,
           message: 'Invalid status provided.'
         )
       end
@@ -154,7 +154,7 @@ module Services
         Services::Result.new(
           success?: false,
           errors: @order.errors.full_messages,
-          status: :unprocessable_entity,
+          status: :unprocessable_content,
           message: "Failed to update order #{attribute}."
         )
       end

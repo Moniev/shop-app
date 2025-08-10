@@ -3,6 +3,6 @@
 json.cache! ['order_show', @order.id, @order.updated_at, @order.items.maximum(:updated_at) || Time.current] do
   json.message @message if @message.present?
   json.order do
-    json.partial! 'order', order: @order
+    json.partial! 'api/v1/orders/order', order: @order
   end
 end

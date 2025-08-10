@@ -6,8 +6,9 @@ class Order < ApplicationRecord
   has_many :products, through: :items
   has_one :payment, dependent: :destroy
 
-  enum :status, { pending: 0, processing: 1, shipped: 2, delivered: 3, cancelled: 4, refunded: 5 }, prefix: true
-  enum :payment_status, { unpaid: 0, paid: 1, failed: 2, refunded: 3 }, prefix: true
+  enum :status, { pending: 0, processing: 1, shipped: 2, delivered: 3, cancelled: 4, refunded: 5 }, prefix: true,
+                                                                                                    default: :pending
+  enum :payment_status, { unpaid: 0, paid: 1, failed: 2, refunded: 3 }, prefix: true, default: :unpaid
 
   accepts_nested_attributes_for :items, allow_destroy: true
 
@@ -66,6 +67,14 @@ class Order < ApplicationRecord
 
   def mark_as_paid!
     update!(payment_status: :paid)
+  end
+
+  def mark_as_failed!
+    update!(payment_status: :failed)
+  end
+
+  def mark_as_refunded!
+    update!(payment_status: :refunded)
   end
 
   private

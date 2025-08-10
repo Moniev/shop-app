@@ -3,7 +3,7 @@
 json.cache! ['payments_index', @payments.map(&:id).sort,
              @payments.maximum(:updated_at) || Time.current, params[:page]] do
   json.payments @payments do |payment|
-    json.partial! 'payment', payment: payment
+    json.partial! 'api/v1/payments/payment', payment: payment
   end
 
   if @payments.respond_to?(:current_page)

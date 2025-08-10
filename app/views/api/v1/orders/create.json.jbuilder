@@ -3,7 +3,7 @@
 if @errors.blank?
   json.message 'Order created successfully.'
   json.order do
-    json.partial! 'order', order: @order
+    json.partial! 'api/v1/orders/order', order: @order
   end
 else
   json.errors @errors

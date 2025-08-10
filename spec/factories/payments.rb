@@ -5,17 +5,17 @@ FactoryBot.define do
     association :order
 
     amount { 100.00 }
-    status { :pending }
+    status { :unpaid }
     payment_method { 'stripe' }
-    currency { 'PLN' }
+    currency { 'pln' }
 
     sequence(:transaction_id) { |n| "tx_#{SecureRandom.hex(8)}#{n}" }
 
     error_message { nil }
     stripe_charge_id { nil }
 
-    trait :completed do
-      status { :completed }
+    trait :paid do
+      status { :paid }
       sequence(:stripe_charge_id) { |n| "ch_#{SecureRandom.hex(8)}#{n}" }
     end
 

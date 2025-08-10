@@ -2,5 +2,5 @@
 
 json.message @message
 json.order do
-  json.partial! 'order', order: @order
+  json.partial! 'api/v1/orders/order', order: @order
 end

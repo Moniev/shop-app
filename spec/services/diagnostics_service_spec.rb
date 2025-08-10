@@ -3,14 +3,16 @@
 require 'rails_helper'
 
 RSpec.describe Services::DiagnosticsService, type: :service do
+  let(:instrumentor) { class_double(Services::Instrumentor).as_stubbed_const }
+
   before do
-    stub_const('Instrumentor', class_double('Instrumentor', check_performed: nil))
+    allow(instrumentor).to receive(:check_performed)
   end
 
   describe '.readiness_probe' do
     context 'when the database connection is successful' do
       before do
-        allow(ActiveRecord::Base).to receive(:connection).and_return(true)
+        allow(ActiveRecord::Base).to receive(:connection).and_return(double(execute: true))
       end
 
       it 'returns an :ok status' do
@@ -20,7 +22,7 @@ RSpec.describe Services::DiagnosticsService, type: :service do
 
       it 'instruments the check' do
         described_class.readiness_probe
-        expect(Instrumentor).to have_received(:check_performed).with(:readiness)
+        expect(instrumentor).to have_received(:check_performed).with(:readiness)
       end
     end
 

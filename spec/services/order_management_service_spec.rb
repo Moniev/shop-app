@@ -33,7 +33,7 @@ RSpec.describe Services::OrderManagementService, type: :service do
 
         expect(result.success?).to be false
         expect(result.errors).to include("Status can't be blank")
-        expect(result.status).to eq(:unprocessable_entity)
+        expect(result.status).to eq(:unprocessable_content)
       end
     end
   end
@@ -63,14 +63,14 @@ RSpec.describe Services::OrderManagementService, type: :service do
 
   describe '#mark_as_paid' do
     it 'updates payment_status to paid' do
-      service.mark_as_paid
+      service.mark_payment_status('paid')
       expect(order.reload.payment_status_paid?).to be true
     end
   end
 
   describe '#mark_as_shipped' do
     it 'updates status to shipped' do
-      service.mark_as_shipped
+      service.mark_order_status('shipped')
       expect(order.reload.status_shipped?).to be true
     end
   end
@@ -180,7 +180,7 @@ RSpec.describe Services::OrderManagementService, type: :service do
         result = service.remove_product(product_to_remove, 0)
 
         expect(result.success?).to be false
-        expect(result.status).to eq(:unprocessable_entity)
+        expect(result.status).to eq(:unprocessable_content)
         expect(result.errors).to include('Quantity must be a positive number.')
       end
 
@@ -188,7 +188,7 @@ RSpec.describe Services::OrderManagementService, type: :service do
         result = service.remove_product(product_to_remove, 10)
 
         expect(result.success?).to be false
-        expect(result.status).to eq(:unprocessable_entity)
+        expect(result.status).to eq(:unprocessable_content)
         expect(result.errors).to include('Cannot remove 10 items, only 5 present.')
       end
     end

@@ -1,0 +1,2 @@
+class RefundObserver < ApplicationObserver
+end

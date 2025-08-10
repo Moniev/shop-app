@@ -44,7 +44,7 @@ module Services
         Services::Result.new(
           success?: false,
           errors: user.errors.full_messages,
-          status: :unprocessable_entity,
+          status: :unprocessable_content,
           message: 'User registration failed due to validation errors.'
         )
       rescue StandardError => e

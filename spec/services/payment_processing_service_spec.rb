@@ -39,9 +39,9 @@ RSpec.describe Services::PaymentProcessingService, type: :service do
         end.to change(Payment, :count).by(1)
       end
 
-      it 'updates the payment status to completed' do
+      it 'updates the payment status to paid' do
         described_class.call(order: order, stripe_token: stripe_token)
-        expect(Payment.last.status).to eq('completed')
+        expect(Payment.last.status).to eq('paid')
       end
 
       it 'updates the order status by calling mark_as_paid!' do
@@ -73,10 +73,10 @@ RSpec.describe Services::PaymentProcessingService, type: :service do
         described_class.call(order: order, stripe_token: stripe_token)
       end
 
-      it 'returns an unprocessable_entity failure result' do
+      it 'returns an unprocessable_content failure result' do
         result = described_class.call(order: order, stripe_token: stripe_token)
         expect(result.success?).to be false
-        expect(result.status).to eq(:unprocessable_entity)
+        expect(result.status).to eq(:unprocessable_content)
         expect(result.errors).to include('Amount must be greater than 0')
       end
     end
@@ -103,7 +103,7 @@ RSpec.describe Services::PaymentProcessingService, type: :service do
       it 'returns a failure result with the card error message' do
         result = described_class.call(order: order, stripe_token: stripe_token)
         expect(result.success?).to be false
-        expect(result.status).to eq(:unprocessable_entity)
+        expect(result.status).to eq(:unprocessable_content)
         expect(result.errors).to include('Your card was declined.')
       end
     end

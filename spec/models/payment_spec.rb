@@ -10,7 +10,11 @@ RSpec.describe Payment, type: :model do
   end
 
   describe 'enums' do
-    it { should define_enum_for(:status).with_values(pending: 0, completed: 1, failed: 2, refunded: 3) }
+    it do
+      should define_enum_for(:status)
+        .with_values(unpaid: 0, paid: 1, failed: 2, refunded: 3)
+        .with_prefix
+    end
   end
 
   describe 'validations' do
@@ -24,21 +28,21 @@ RSpec.describe Payment, type: :model do
       should validate_uniqueness_of(:transaction_id).allow_nil
     end
 
-    context 'when status is completed' do
-      subject { build(:payment, :completed, order: order) }
+    context 'when status is paid' do
+      subject { build(:payment, :paid, order: order) }
 
       it { should validate_presence_of(:stripe_charge_id) }
 
       it 'is invalid on update without a currency' do
-        payment = create(:payment, :completed, order: order)
+        payment = create(:payment, :paid, order: order)
         payment.currency = nil
         expect(payment).not_to be_valid
         expect(payment.errors[:currency]).to include("can't be blank")
       end
     end
 
-    context 'when status is not completed' do
-      subject { build(:payment, status: :pending, order: order) }
+    context 'when status is not paid' do
+      subject { build(:payment, status: :unpaid, order: order) }
 
       it { should_not validate_presence_of(:stripe_charge_id) }
       it { should_not validate_presence_of(:currency) }
@@ -62,27 +66,27 @@ RSpec.describe Payment, type: :model do
   end
 
   describe 'instance methods' do
-    let(:payment) { create(:payment, order: order, status: :pending, stripe_charge_id: 'ch_xyz789') }
+    let(:payment) { create(:payment, order: order, status: :unpaid, stripe_charge_id: 'ch_xyz789') }
 
-    describe '#mark_as_completed!' do
-      it 'updates the status to completed' do
-        payment.mark_as_completed!
-        expect(payment.status).to eq('completed')
+    describe '#mark_as_paid!' do
+      it 'updates the status to paid' do
+        payment.mark_as_paid!
+        expect(payment.status).to eq('paid')
       end
     end
 
     describe '#mark_as_failed!' do
-      let(:pending_payment) { create(:payment, order: order, status: :pending) }
+      let(:unpaid_payment) { create(:payment, order: order, status: :unpaid) }
 
       it 'updates the status to failed' do
-        pending_payment.mark_as_failed!
-        expect(pending_payment.status).to eq('failed')
+        unpaid_payment.mark_as_failed!
+        expect(unpaid_payment.status).to eq('failed')
       end
 
       it 'sets the error_message when provided' do
         error_msg = 'Insufficient funds'
-        pending_payment.mark_as_failed!(error_msg)
-        expect(pending_payment.error_message).to eq(error_msg)
+        unpaid_payment.mark_as_failed!(error_msg)
+        expect(unpaid_payment.error_message).to eq(error_msg)
       end
     end
   end

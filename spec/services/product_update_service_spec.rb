@@ -65,10 +65,10 @@ RSpec.describe Services::ProductUpdateService, type: :service do
         described_class.call(product, invalid_params)
       end
 
-      it 'returns an unprocessable_entity result with errors' do
+      it 'returns an unprocessable_content result with errors' do
         result = described_class.call(product, invalid_params)
         expect(result.success?).to be false
-        expect(result.status).to eq(:unprocessable_entity)
+        expect(result.status).to eq(:unprocessable_content)
         expect(result.errors).to include("Name can't be blank")
       end
     end

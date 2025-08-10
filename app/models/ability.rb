@@ -4,36 +4,38 @@ class Ability
   include CanCan::Ability
 
   def initialize(user)
+    alias_action :update_location, :update_details, :update_entrepreneur_details, to: :update_specifics
+    alias_action :me, :logout, :actions, to: :profile_actions
+
     user ||= User.new
 
     can :read, Product
+    can :create, User
 
     return unless user.persisted?
 
-    can %i[like rate comment], Product
+    can %i[like unlike rate comment], Product
     can :manage, :cart
     can :create, Payment
     can :show, Payment, order: { user_id: user.id }
+    can :create, Refund
+    can %i[show cancel], Refund, refund: { user_id: user.id }
+    can %i[create read cancel], Order, user_id: user.id
 
-    can :create, Order
-    can :read, Order, user_id: user.id
-    can :cancel, Order, user_id: user.id
-
-    can :manage, User, id: user.id
+    can %i[manage update_specifics profile_actions], User, id: user.id
     cannot :role, User
 
     if user.admin?
       can :manage, :all
     elsif user.moderator?
-      can :read, [Product, Order, Payment, Comment, Item, BlacklistedToken, User]
-      can :update, Product
-      can :update, Order
-      can :update, Payment
+      can :read, :all
+      can :update, [Product, Order, Payment, Refund]
       can :manage, Comment
     elsif user.regular?
-      can :read, [Product, Comment, Item]
-      can :show, Payment, order: { user_id: user.id }
-      cannot :index, User unless user.admin?
+      can :read, Comment
+      can :read, Item, item: { user_id: user.id }
+      can %i[update destroy], Comment, comment: { user_id: user.id }
+      cannot :index, User
     end
   end
 end

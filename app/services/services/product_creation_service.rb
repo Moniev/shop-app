@@ -29,7 +29,7 @@ module Services
         Services::Result.new(
           success?: false,
           errors: product.errors.full_messages,
-          status: :unprocessable_entity,
+          status: :unprocessable_content,
           message: 'Product creation failed due to validation errors.'
         )
       rescue StandardError => e

@@ -112,6 +112,14 @@ module Services
           message: 'An unexpected error occurred.'
         )
       end
+
+      def blacklist_user(id)
+        user = User.find(id)
+        user.w
+      end
+
+      def whitelist_user(id)
+      end
     end
   end
 end

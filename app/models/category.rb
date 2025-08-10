@@ -1,3 +1,8 @@
+# frozen_string_literal: true
+
 class Category < ApplicationRecord
-  has_many :category, class_name: 'Category'
+  belongs_to :product
+  belongs_to :category
+
+  validates :product_id, uniqueness: { scope: :category_id }
 end

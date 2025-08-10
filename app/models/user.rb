@@ -16,6 +16,7 @@ class User < ApplicationRecord
   has_many :blacklisted_tokens, foreign_key: :owner_id, dependent: :destroy
   has_many :comments, dependent: :destroy
   has_many :cart_items, -> { where(order_id: nil) }, class_name: 'Item', dependent: :destroy
+  has_many :bans, foreign_key: :owner_id, dependent: :destroy
 
   accepts_nested_attributes_for :user_detail
 

@@ -48,6 +48,9 @@ module Api
         bind_data_and_render(result, 'verify_2fa', user: user)
       end
 
+      def request_2fa_resend
+      end
+
       # PATCH /api/v1/auth/activate
       #
       # Activates a user account with an activation code.
@@ -66,6 +69,9 @@ module Api
                    Services::Result.new(success?: false, errors: ['User not found'], status: :unprocessable_content)
                  end
         bind_data_and_render(result, 'activate', user: user)
+      end
+
+      def request_activation_resend
       end
 
       # PATCH /api/v1/auth/verify
@@ -106,6 +112,9 @@ module Api
         bind_data_and_render(result, 'request_reset')
       end
 
+      def request_reset_code_resend
+      end
+
       # PATCH /api/v1/auth/password/reset
       #
       # Confirms a password reset using a code.
@@ -121,6 +130,12 @@ module Api
         result = Services::PasswordResetService.reset(params[:reset_code], params[:password],
                                                       params[:password_confirmation])
         bind_data_and_render(result, 'confirm_reset')
+      end
+
+      def blacklist_user
+      end
+
+      def whitelist_user
       end
 
       private

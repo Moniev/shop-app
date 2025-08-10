@@ -9,9 +9,10 @@ module Api
     # creating from a cart, viewing details, and modifying status.
     # It enforces authentication and role-based authorization for secure access.
     class OrdersController < Api::ApplicationController
-      before_action :set_order, only: %i[add_product remove_product cancel]
+      before_action :set_order, only: %i[add_product remove_product mark_order_status mark_payment_status cancel]
       before_action :set_product, only: %i[add_product remove_product]
-      load_and_authorize_resource except: %i[me create add_product remove_product]
+      load_and_authorize_resource except: %i[me create add_product remove_product cancel mark_order_status
+                                             mark_payment_status]
 
       # GET /api/v1/orders
       #
@@ -98,6 +99,16 @@ module Api
       def remove_product
         quantity = remove_product_params[:quantity]
         result = order_management_service.remove_product(@product, quantity)
+        bind_data_and_render(result, 'show')
+      end
+
+      def mark_order_status
+        result = order_management_service.mark_order_status(order_status_params[:status])
+        bind_data_and_render(result, 'show')
+      end
+
+      def mark_payment_status
+        result = order_management_service.mark_payment_status(payment_status_params[:payment_status])
         bind_data_and_render(result, 'show')
       end
 
@@ -194,6 +205,14 @@ module Api
 
       def remove_product_params
         params.permit(:product_id, :quantity)
+      end
+
+      def order_status_params
+        params.require(:order).permit(:status)
+      end
+
+      def payment_status_params
+        params.require(:order).permit(:payment_status)
       end
     end
   end

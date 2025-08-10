@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Services
-  class RefundUpdateService
-    def self.call
+  class RefundManagementService
+    def self.call(refund)
     end
   end
 end

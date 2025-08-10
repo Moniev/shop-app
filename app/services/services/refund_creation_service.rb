@@ -2,7 +2,7 @@
 
 module Services
   class RefundCreationService
-    def self.call
+    def self.call(user, order_params, refund_params)
     end
   end
 end

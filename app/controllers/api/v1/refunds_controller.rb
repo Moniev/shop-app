@@ -1,29 +1,61 @@
 # frozen_string_literal: true
 
-class RefundsController < Api::ApplicationController
-  load_and_authorize_resource
+module Api
+  module V1
+    class RefundsController < Api::ApplicationController
+      before_action :set_order
+      before_action :set_refund, only: %i[update]
+      load_and_authorize_resource
 
-  def index; end
+      def create
+        result = Services::RefundCreationService.call(
+          user: current_user,
+          order_params: order_params,
+          refund_params: refund_params
+        )
+        bind_data_and_render(result, 'show')
+      end
 
-  def show; end
+      def index
+        @refunds = Refund.accessible_by(current_ability).includes(:order).refund(created_at: :desc)
+        bind_data_and_render(nil, 'index')
+      end
 
-  def me; end
+      def show
+        bind_data_and_render(nil, 'show')
+      end
 
-  def update; end
+      def me
+      end
 
-  def destroy; end
+      def update
+      end
 
-  private
+      def destroy; end
 
-  def refund_params; end
+      private
 
-  def set_refund
-    params.require(:refund).permit
-  end
+      def refund_params
+        params.fetch(:refund, {}).permit(:status, :payment_status)
+      end
 
-  def bind_data_and_render
-  end
+      def set_order
+        @order = Order.find_by(id: params[:order_id])
+      end
 
-  def handle_error_reponse
+      def set_refund
+        params.require(:refund).permit
+      end
+
+      def bind_data_and_render(result, view_name)
+      end
+
+      def handle_error_reponse
+      end
+
+      def refund_management_service
+        @refund_management_service ||= Services::RefundManagementService.new(@refund)
+      end
+    end
   end
 end

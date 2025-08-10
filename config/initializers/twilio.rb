@@ -2,11 +2,13 @@
 
 require 'twilio-ruby'
 
-account_sid = Rails.application.credentials.twilio[:account_sid]
-auth_token = Rails.application.credentials.twilio[:auth_token]
+Twilio.configure do |config|
+  config.account_sid = ENV.fetch('TWILIO_ACCOUNT_SID')
+  config.auth_token = ENV.fetch('TWILIO_AUTH_TOKEN')
+end
 
-if account_sid && auth_token
-  TWILIO_CLIENT = Twilio::REST::Client.new(account_sid, auth_token)
+if config.account_sid && config.auth_token
+  TWILIO_CLIENT = Twilio::REST::Client.new(config.account_sid, config.auth_token)
   Rails.logger.info 'Twilio client initialized successfully.'
 else
   Rails.logger.warn 'Twilio credentials not found. SMSService will not be available.'

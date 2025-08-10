@@ -16,27 +16,6 @@ module Services
   # two-factor authentication (2FA) codes to users via their phone numbers.
   # It handles Twilio client initialization and error logging for failed attempts.
   class SmsService
-    # Initializes and returns the Twilio REST client.
-    #
-    # The client is configured with account SID and auth token from Rails credentials.
-    # The client instance is memoized for efficiency.
-    #
-    # @return [Twilio::REST::Client] An instance of the Twilio REST client.
-    def self.client
-      account_sid = Rails.application.credentials.twilio[:account_sid]
-      auth_token = Rails.application.credentials.twilio[:auth_token]
-      @client ||= Twilio::REST::Client.new(account_sid, auth_token)
-    end
-
-    # Returns the Twilio phone number configured for sending messages.
-    #
-    # This number is retrieved from Rails credentials.
-    #
-    # @return [String] The Twilio phone number used as the sender.
-    def self.twilio_phone_number
-      Rails.application.credentials.twilio[:phone_number]
-    end
-
     # Sends an SMS message to a specified recipient.
     #
     # This method attempts to create and send an SMS message using the Twilio API.
@@ -44,22 +23,24 @@ module Services
     #
     # @param to [String] The recipient's phone number (e.g., '+1234567890').
     # @param body [String] The content of the SMS message.
-    # @return [Boolean] True if the message was successfully sent, false otherwise.
+    # @return [Services::Result]
     def self.dial(to:, body:)
-      return unless to.present? && body.present?
-
-      begin
-        message = client.messages.create(
-          from: twilio_phone_number,
-          to: to,
-          body: body
-        )
-        Rails.logger.info "SMS sent successfully to #{to}. SID: #{message.sid}"
-        true
-      rescue Twilio::REST::TwilioError => e
-        Rails.logger.error "Twilio Error: Failed to send SMS to #{to}. Reason: #{e.message}"
-        false
+      unless to.present? && body.present? && twilio_phone_number.present?
+        return Services::Result.new(success?: false, errors: ['Missing recipient, body, or sender number.'])
       end
+
+      client = Twilio::REST::Client.new
+      message = client.messages.create(
+        from: twilio_phone_number,
+        to: to,
+        body: body
+      )
+
+      Rails.logger.info "SMS sent successfully to #{to}. SID: #{message.sid}"
+      Services::Result.new(success?: true, data: { sid: message.sid })
+    rescue Twilio::REST::TwilioError => e
+      Rails.logger.error "Twilio Error: Failed to send SMS to #{to}. Reason: #{e.message}"
+      Services::Result.new(success?: false, errors: [e.message])
     end
 
     # Sends a two-factor authentication (2FA) code via SMS to a user.
@@ -74,12 +55,14 @@ module Services
     # @return [Boolean, nil] True if the message was successfully sent, false if Twilio error,
     #   or nil if the user has no phone number.
     def self.dial_2fa_code(user, code)
-      return false unless user.phone.present?
+      return Services::Result.new(success?: false, errors: ['User has no phone number.']) unless user.phone.present?
 
       message_body = "Your two-factor authentication code is: #{code}"
       dial(to: user.phone, body: message_body)
     end
 
-    private_class_method :client, :twilio_phone_number
+    def self.twilio_phone_number
+      ENV.fetch('TWILIO_PHONE_NUMBER')
+    end
   end
 end

@@ -27,7 +27,6 @@ module Api
         payload = request.body.read
         sig_header = request.env['HTTP_STRIPE_SIGNATURE']
         result = Services::StripeWebhookHandlerService.call(payload: payload, sig_header: sig_header)
-
         bind_data(result)
         render :handle, status: @status
       end

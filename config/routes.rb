@@ -3,7 +3,7 @@
 Rails.application.routes.draw do
   mount Rswag::Ui::Engine => '/api_docs'
   mount Rswag::Api::Engine => '/api_docs'
-  namespace :api do
+  namespace :api, defaults: { format: :json } do
     namespace :v1 do
       scope :auth, controller: :auth do
         post 'login'

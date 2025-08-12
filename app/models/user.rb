@@ -21,7 +21,7 @@ class User < ApplicationRecord
   accepts_nested_attributes_for :user_detail
 
   validates :mail, presence: true, uniqueness: true
-  validates :phone, uniqueness: { case_sensitive: false }, allow_nil: true
+  validates :phone, uniqueness: { case_sensitive: false }, if: :phone_changed_and_present?
   validates :password_digest, presence: true
 
   def create_activation_code!(code:, expires_in_hours: 24)
@@ -56,5 +56,9 @@ class User < ApplicationRecord
 
   def moderator?
     role == 'moderator'
+  end
+
+  def phone_changed_and_present?
+    phone.present? && phone_changed?
   end
 end

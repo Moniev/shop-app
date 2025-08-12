@@ -19,7 +19,7 @@ module Services
         )
       end
 
-      if User.exists?(phone: user_params[:phone])
+      if user_params[:phone].present? && User.exists?(phone: user_params[:phone])
         return Services::Result.new(
           success?: false,
           errors: ['User with this phone number already exists.'],

@@ -2,7 +2,7 @@
 
 module Services
   class RefundDeletionService
-    def self.call
+    def self.call(refund)
     end
   end
 end

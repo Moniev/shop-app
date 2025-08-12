@@ -10,7 +10,6 @@ module Api
       def create
         result = Services::RefundCreationService.call(
           user: current_user,
-          order_params: order_params,
           refund_params: refund_params
         )
         bind_data_and_render(result, 'show')

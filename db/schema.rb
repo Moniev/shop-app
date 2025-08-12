@@ -280,7 +280,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_10_184448) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["mail"], name: "index_users_on_mail", unique: true
-    t.index ["phone"], name: "index_users_on_phone", unique: true
+    t.index ["phone"], name: "index_users_on_phone", unique: true, where: "(phone IS NOT NULL)"
   end
 
   create_table "verification_codes", force: :cascade do |t|

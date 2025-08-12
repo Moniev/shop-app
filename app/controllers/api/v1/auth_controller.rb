@@ -24,8 +24,7 @@ module Api
       # @see Services::AuthenticationService.login
       def login
         result = Services::AuthenticationService.login(params[:mail], params[:password])
-        user = User.find_by(mail: params[:mail]) if result.success?
-        bind_data_and_render(result, 'login', user: user)
+        bind_data_and_render(result, 'login')
       end
 
       # POST /api/v1/auth/verify_2fa

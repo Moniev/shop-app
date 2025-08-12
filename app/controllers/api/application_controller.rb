@@ -103,7 +103,7 @@ module Api
         return false
       end
 
-      unless current_user.active? && current_user.verified?
+      unless current_user.active?
         render json: { errors: ['User account is not active or verified.'], message: 'Account not active or verified.' },
                status: :forbidden
         return false

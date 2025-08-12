@@ -16,6 +16,14 @@ module Services
     # @return [Services::Result] A Result object indicating success or failure of login.
     def self.login(email, password)
       user = User.find_by(mail: email)
+      unless user&.active?
+        return Result.new(
+          success?: false,
+          errors: ['User is not activated.'],
+          status: :unauthorized,
+          message: 'Authentication failed.'
+        )
+      end
 
       unless user&.authenticate(password)
         return Result.new(

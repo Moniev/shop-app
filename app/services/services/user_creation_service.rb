@@ -32,7 +32,7 @@ module Services
       begin
         ActiveRecord::Base.transaction do
           user.save!
-          user.create_activation_code!(code: SecureRandom.hex(16))
+          user.create_activation_code!(code: SecureRandom.hex(4))
         end
         Services::Result.new(
           success?: true,

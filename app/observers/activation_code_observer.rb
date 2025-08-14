@@ -10,5 +10,6 @@ class ActivationCodeObserver < ApplicationObserver
 
   def after_destroy(activation_code)
     Rails.logger.info "ActivationCodeObserver: Activation code deleted (ID: #{activation_code.id}, User ID: #{activation_code.user.id})"
+    Rails.logger.info "ActivationCodeObserver: Activation code as been used (ID: #{activation_code.id}, User ID: #{activation_code.user.id})"
   end
 end

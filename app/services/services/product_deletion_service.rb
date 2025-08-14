@@ -10,6 +10,14 @@
 module Services
   class ProductDeletionService
     def self.call(product)
+      unless product
+        Services::Result.new(
+          success?: false,
+          errors: ['No such product'],
+          status: :not_modified,
+          message: 'Product deletion failed.'
+        )
+      end
       ActiveRecord::Base.transaction do
         product.destroy!
 

@@ -114,19 +114,39 @@ module Api
         bind_data_and_render(result, 'show')
       end
 
+      def available_categories
+        @categories = Category.order(:name)
+        bind_data_and_render(result, 'show')
+      end
+
+      def create_categories
+        result = Services::CategoryManagementService.create(category_params)
+        bind_data_and_render(result, 'show')
+      end
+
+      def update_categories
+        result = Services::CategoryManagementService.update(category_params)
+        bind_data_and_render(result, 'show')
+      end
+
+      def destroy_category
+        result = Services::CategoryManagementServices.delete(@category)
+        handle_destroy_response(result)
+      end
+
       private
 
       def bind_data_and_render(result, view_name)
         if result
           bind_data(result)
           if @success
-            if @data.key?(:product)
-              @product = @data[:product]
-            elsif @product.present? && @product.persisted?
-              @product.reload
-            end
+            @product   = @data[:product]   if @data.key?(:product)
+            @products  = @data[:products]  if @data.key?(:products)
+            @category  = @data[:category]  if @data.key?(:category)
+            @categories = @data[:categories] if @data.key?(:categories)
 
-            @products = @data[:products] if @data.key?(:products)
+            @product.reload if @product.present? && @product.persisted? && !@data.key?(:product)
+
             render view_name, status: @status
           else
             render json: { errors: @errors || [] }, status: @status
@@ -152,6 +172,14 @@ module Api
         else
           render json: { errors: ['Product not found.'] }, status: :not_found
         end
+      end
+
+      # Defines permitted parameters for the 'categories' actions.
+      # @return [ActionController::Parameters] Permitted parameters.
+      def category_params
+        params.require(:category).permit(
+          :name, :parent_id, product_ids: []
+        )
       end
 
       # Initializes and returns an instance of ProductInteractionService for the current user.
@@ -180,6 +208,10 @@ module Api
           product_photos_attributes: %i[id _destroy],
           product_photo_ids: []
         )
+      end
+
+      def set_category
+        @category = Category.find(params[:category_id])
       end
     end
   end

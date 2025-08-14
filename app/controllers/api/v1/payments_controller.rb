@@ -69,11 +69,8 @@ module Api
           @message = result.message || ''
 
           if @success
-            if result.data.key?(:payment)
-              @payment = result.data[:payment]
-            elsif result.data.key?(:payments)
-              @payments = result.data[:payments]
-            end
+            @payment = result.data[:payment] if result.data.key?(:payment)
+            @payments = result.data[:payments] if result.data.key?(:payments)
             render view_name, status: @status
           else
             render json: { errors: result.errors || [] }, status: @status

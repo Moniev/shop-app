@@ -29,4 +29,8 @@ json.cache! [
   json.comments product.comments.where(parent_id: nil) do |comment|
     json.partial! 'api/v1/products/product_comment', product_comment: comment
   end
+
+  json.categories product.categories do |category|
+    json.partial! 'api/v1/products/product_category', product_category: category
+  end
 end

@@ -160,11 +160,9 @@ module Api
         if result
           bind_data(result)
           if @success
-            if @data.key?(:order)
-              @order = @data[:order]
-            elsif @data.key?(:orders)
-              @orders = @data[:orders]
-            end
+            @order = @data[:order] if @data.key?(:order)
+            @orders = @data[:orders] if @data.key?(:orders)
+
             render view_name, status: @status
           else
             render json: { errors: @errors }, status: @status

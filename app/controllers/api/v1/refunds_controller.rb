@@ -53,7 +53,7 @@ module Api
       end
 
       def set_refund
-        params.require(:refund).permit
+        @refund = Refund.find_by(id: params[:refund_id])
       end
 
       def bind_data_and_render(result, view_name)
@@ -61,9 +61,8 @@ module Api
           bind_data(result)
           if @success
             if @data.key?(:refund)
-              @refund = data[:refund]
-            elsif @data.key?(:refunds)
-              @refunds = @data[:products] if @data.key?(:refunds)
+              @refund = data[:refund] if @data.key?(:refund)
+              @refunds = @data[:products] if @data.key?(:refunds) if @data.key?(:refunds)
             end
           end
         else

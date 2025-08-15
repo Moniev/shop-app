@@ -10,13 +10,24 @@ Rails.application.routes.draw do
         post 'verify_2fa'
         patch 'activate'
         patch 'verify'
-        post 'password/reset', to: 'auth#request_reset'
-        patch 'password/reset', to: 'auth#confirm_reset'
+
+        scope 'password', as: 'password' do
+          post 'reset', action: :request_reset
+          patch 'reset', action: :confirm_reset
+        end
+
+        post 'request_2fa_code_resend'
+        post 'request_activation_code_resend'
+        post 'request_verification_code_resend'
+        post 'request_reset_code_resend'
+
+        post 'blacklist_user'
+        post 'whitelist_user'
       end
 
       post 'stripe_payments_webhook/handle', to: 'stripe_payments_webhook#handle'
 
-      resources :users, only: %i[create index show update destroy] do
+      resources :users, controller: :users, only: %i[create index show update destroy] do
         collection do
           get 'me'
           post 'logout'
@@ -31,7 +42,7 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :products, only: %i[index create show update destroy] do
+      resources :products, controller: :products, only: %i[index create show update destroy] do
         member do
           post 'like'
           post 'rate'
@@ -40,9 +51,9 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :payments, only: %i[index create show]
+      resources :payments, controller: :payments, only: %i[index create show]
 
-      resources :orders, only: %i[index create show update destroy] do
+      resources :orders, controller: :orders, only: %i[index create show update destroy] do
         collection do
           get 'me'
         end
@@ -53,7 +64,7 @@ Rails.application.routes.draw do
         end
       end
 
-      resource :cart, controller: 'cart', only: [:show] do
+      resource :cart, controller: :cart, only: [:show] do
         member do
           post 'add/:product_id', to: 'cart#add', as: 'add_to'
           delete 'revoke/:item_id', to: 'cart#revoke', as: 'revoke_from'

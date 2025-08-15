@@ -60,6 +60,12 @@ module Services
         dial(to: user.phone, body: "Your two-factor authentication code is: #{code}")
       end
 
+      def dial_verification_code(user, code)
+        return false if user.phone.blank?
+
+        dial(to: user.phone, body: "Your verification code is #{code}")
+      end
+
       private
 
       def client

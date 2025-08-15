@@ -119,13 +119,13 @@ module Api
         bind_data_and_render(result, 'show')
       end
 
-      def create_categories
+      def create_category
         result = Services::CategoryManagementService.create(category_params)
         bind_data_and_render(result, 'show')
       end
 
-      def update_categories
-        result = Services::CategoryManagementService.update(category_params)
+      def update_category
+        result = Services::CategoryManagementService.update(@category, category_params)
         bind_data_and_render(result, 'show')
       end
 

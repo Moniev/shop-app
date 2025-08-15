@@ -116,9 +116,9 @@ RSpec.describe Api::V1::AuthController, type: :controller do
     end
 
     context 'when user is not found' do
-      it 'returns an unauthorized status' do
+      it 'returns an not found status' do
         post :verify_2fa, params: { mail: 'unknown@example.com', second_factor_code: 'some_code' }
-        expect(response).to have_http_status(:unauthorized)
+        expect(response).to have_http_status(:not_found)
       end
     end
   end
@@ -156,9 +156,9 @@ RSpec.describe Api::V1::AuthController, type: :controller do
     end
 
     context 'when user is not found' do
-      it 'returns an unprocessable entity status' do
+      it 'returns an not found status' do
         patch :activate, params: { mail: 'unknown@example.com', activation_code: 'some_code' }
-        expect(response).to have_http_status(:unprocessable_content)
+        expect(response).to have_http_status(:not_found)
       end
     end
   end
@@ -196,9 +196,9 @@ RSpec.describe Api::V1::AuthController, type: :controller do
     end
 
     context 'when user is not found' do
-      it 'returns an unprocessable entity status' do
+      it 'returns an not found status' do
         patch :verify, params: { mail: 'unknown@example.com', verification_code: 'some_code' }
-        expect(response).to have_http_status(:unprocessable_content)
+        expect(response).to have_http_status(:not_found)
       end
     end
   end

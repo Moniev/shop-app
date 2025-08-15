@@ -24,6 +24,22 @@ class User < ApplicationRecord
   validates :phone, uniqueness: { case_sensitive: false }, if: :phone_changed_and_present?
   validates :password_digest, presence: true
 
+  def activated?
+    self.active
+  end
+
+  def unactivated?
+    !activated?
+  end
+
+  def verified?
+    self.verified
+  end
+
+  def unverified?
+    !verified?
+  end
+
   def create_activation_code!(code:, expires_in_hours: 24)
     activation_code = ActivationCode.new(user: self, code: code, expires_at: expires_in_hours.hours.from_now)
     activation_code.save!

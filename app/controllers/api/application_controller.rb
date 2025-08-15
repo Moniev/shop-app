@@ -46,6 +46,7 @@ module Api
     rescue ArgumentError => e
       render json: { errors: [e.message], message: 'Bad request parameters.' }, status: :bad_request
     rescue StandardError => e
+      Rails.logger.error "#{e.message}"
       render json: { errors: ['An unexpected error occurred.'], message: 'Internal server error.' },
              status: :internal_server_error
     end

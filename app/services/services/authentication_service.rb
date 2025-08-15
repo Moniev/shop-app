@@ -71,14 +71,7 @@ module Services
     # @param code [String] The 2FA code.
     # @return [Services::Result] A Result object indicating success or failure of 2FA verification.
     def self.verify_2fa(user, code)
-      unless user
-        return Services::Result.new(
-          success?: false,
-          errors: ['User not found.'],
-          status: :unauthorized,
-          message: 'User not found for 2FA verification.'
-        )
-      end
+      return user_not_found_result unless user
 
       redis_key = "user:#{user.id}:2fa_code"
 
@@ -141,6 +134,8 @@ module Services
     #
     # @param user [User] The user object.
     def self.send_2fa_code(user)
+      return user_not_found_result unless user
+
       code = SecureRandom.hex(8)
       redis_key = "user:#{user.id}:2fa_code"
       expires_at = 15.minutes.from_now
@@ -161,5 +156,15 @@ module Services
         UserMailer.dial_2fa_code(user, code).deliver_later
       end
     end
+
+    def self.user_not_found_result
+      Services::Result.new(
+        success?: false,
+        errors: ['user not found.'],
+        status: :not_found,
+        message: 'user not found.'
+      )
+    end
+    private_class_method :send_2fa_code, :user_not_found_result
   end
 end

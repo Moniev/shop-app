@@ -9,7 +9,7 @@
 # payment processing, or external API interactions
 module Services
   class CategoryManagementService
-    def create(category_params)
+    def self.create(category_params)
       category = Category.new(category_params)
 
       ActiveRecord::Base.transaction do
@@ -39,7 +39,7 @@ module Services
       )
     end
 
-    def update(category, category_params)
+    def self.update(category, category_params)
       return category_not_found_result unless category
 
       category.update!(category_params)
@@ -67,7 +67,7 @@ module Services
       )
     end
 
-    def destroy(category)
+    def self.destroy(category)
       return category_not_found_result unless category
 
       begin
@@ -99,7 +99,7 @@ module Services
 
     private
 
-    def category_not_found_result
+    def self.category_not_found_result
       Services::Result.new(
         success?: false,
         errors: ['Category not found.'],

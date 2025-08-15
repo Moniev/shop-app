@@ -14,9 +14,11 @@ gem 'twilio-ruby'
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 gem 'bcrypt', '~> 3.1.7'
 gem 'bootsnap', require: false
+gem 'jwt'
 gem 'kamal', require: false
 gem 'kaminari'
 gem 'prometheus-client'
+gem 'prometheus-client-mmap'
 gem 'rack-attack'
 gem 'rails-observers'
 gem 'secure_headers'
@@ -34,13 +36,12 @@ group :development, :test do
   gem 'brakeman', require: false
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
-  gem 'jwt'
-  gem 'prometheus-client-mmap'
   gem 'rspec-rails'
   gem 'rswag'
   gem 'rswag-api'
   gem 'rswag-ui'
-  gem 'rubocop-rails-omakase', require: false
+  gem 'rubocop', '~> 1.76'
+  gem 'ruby-lsp'
 end
 
 group :test do
@@ -48,7 +49,6 @@ group :test do
   gem 'database_cleaner-active_record'
   gem 'factory_bot_rails'
   gem 'faker'
-  gem 'prometheus-client-mmap'
   gem 'rspec'
   gem 'rspec-activemodel-mocks'
   gem 'rspec-its'
@@ -60,9 +60,6 @@ group :test do
   gem 'testcontainers-postgres'
   gem 'testcontainers-redis'
 end
-
-gem 'rubocop', '~> 1.76'
-gem 'rubocop-rails'
 
 gem 'cancancan', '~> 3.4'
 gem 'redis'

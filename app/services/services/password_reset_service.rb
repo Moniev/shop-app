@@ -12,7 +12,7 @@ module Services
     def self.request(email)
       user = User.find_by(mail: email)
       if user
-        code = SecureRandom.hex(16)
+        code = SecureRandom.hex(4)
         expires_at = 2.hours.from_now
 
         redis_key = "password_reset:#{code}"
@@ -84,6 +84,9 @@ module Services
         message: 'An unexpected error occurred.',
         status: :internal_server_error
       )
+    end
+
+    def resend_reset_code(user)
     end
 
     private

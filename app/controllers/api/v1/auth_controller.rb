@@ -10,7 +10,17 @@ module Api
     # Provides endpoints for login, two-factor authentication (2FA), account
     # activation, and password reset. Responses are rendered using Jbuilder templates.
     class AuthController < Api::ApplicationController
+      include Api::V1::Concerns::TokenResendable
+
       skip_before_action :authenticate_user!
+      before_action :set_user_by_mail, only: %i[
+        verify_2fa
+        activate
+        verify
+        request_2fa_code_resend
+        request_activation_code_resend
+        request_verification_code_resend
+      ]
 
       # POST /api/v1/auth/login
       #
@@ -38,16 +48,8 @@ module Api
       #   for the Jbuilder view (`verify_2fa.json.jbuilder`).
       # @see Services::AuthenticationService.verify_2fa
       def verify_2fa
-        user = User.find_by(mail: params[:mail])
-        result = if user
-                   Services::AuthenticationService.verify_2fa(user, params[:second_factor_code])
-                 else
-                   Services::Result.new(success?: false, errors: ['User not found'], status: :unauthorized)
-                 end
-        bind_data_and_render(result, 'verify_2fa', user: user)
-      end
-
-      def request_2fa_resend
+        result = Services::AuthenticationService.verify_2fa(@user, params[:second_factor_code])
+        bind_data_and_render(result, 'verify_2fa', user: @user)
       end
 
       # PATCH /api/v1/auth/activate
@@ -61,16 +63,8 @@ module Api
       #   for the Jbuilder view (`activate.json.jbuilder`).
       # @see Services::AccountManagementService.activate
       def activate
-        user = User.find_by(mail: params[:mail])
-        result = if user
-                   Services::UserManagementService.activate(user, params[:activation_code])
-                 else
-                   Services::Result.new(success?: false, errors: ['User not found'], status: :unprocessable_content)
-                 end
-        bind_data_and_render(result, 'activate', user: user)
-      end
-
-      def request_activation_resend
+        result = Services::UserManagementService.activate(@user, params[:activation_code])
+        bind_data_and_render(result, 'activate', user: @user)
       end
 
       # PATCH /api/v1/auth/verify
@@ -84,17 +78,8 @@ module Api
       #   for the Jbuilder view (`verify.json.jbuilder`).
       # @see Services::AccountManagementService.verify
       def verify
-        user = User.find_by(mail: params[:mail])
-        result = if user
-                   Services::UserManagementService.verify(user, params[:verification_code])
-                 else
-                   Services::Result.new(
-                     success?: false,
-                     errors: ['User not found'],
-                     status: :unprocessable_content
-                   )
-                 end
-        bind_data_and_render(result, 'verify', user: user)
+        result = Services::UserManagementService.verify(@user, params[:verification_code])
+        bind_data_and_render(result, 'verify', user: @user)
       end
 
       # POST /api/v1/auth/password/reset
@@ -109,9 +94,6 @@ module Api
       def request_reset
         result = Services::PasswordResetService.request(params[:mail])
         bind_data_and_render(result, 'request_reset')
-      end
-
-      def request_reset_code_resend
       end
 
       # PATCH /api/v1/auth/password/reset
@@ -131,13 +113,23 @@ module Api
         bind_data_and_render(result, 'confirm_reset')
       end
 
-      def blacklist_user
-      end
+      def blacklist_user; end
 
-      def whitelist_user
-      end
+      def whitelist_user; end
 
       private
+
+      def set_user_by_mail
+        @user = User.find_by(mail: params[:mail])
+        return if @user
+
+        result = Services::Result.new(
+          success?: false,
+          errors: ['User with this email not found.'],
+          status: :not_found
+        )
+        bind_data_and_render(result, 'shared/error')
+      end
 
       def bind_data_and_render(result, view_name, locals = {})
         bind_data(result)

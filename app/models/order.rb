@@ -5,6 +5,7 @@ class Order < ApplicationRecord
   has_many :items, dependent: :destroy
   has_many :products, through: :items
   has_one :payment, dependent: :destroy
+  has_one :order
 
   enum :status, { pending: 0, processing: 1, shipped: 2, delivered: 3, cancelled: 4, refunded: 5 }, prefix: true,
                                                                                                     default: :pending

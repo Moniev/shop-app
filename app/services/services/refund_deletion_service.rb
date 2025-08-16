@@ -18,9 +18,9 @@ module Services
         Rails.logger.error("Refund deletion failed for ID #{refund.id}: #{e.message}")
         Services::Result.new(
           success?: false,
-          errors: product.errors.full_messages,
+          errors: refund.errors.full_messages,
           status: :unprocessable_content,
-          message: 'Product deletion failed.'
+          message: 'Refund deletion failed.'
         )
       rescue StandardError => e
         Rails.logger.error("Unexpected error during refund deletion for ID #{refund.id}: #{e.message}")

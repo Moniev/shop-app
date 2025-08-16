@@ -20,23 +20,25 @@ module Services
       return user_activated if user.activated?
 
       begin
-        if user.activation_code&.code == code && user.activation_code.expires_at.future?
-          user.update!(active: true)
-          user.activation_code.destroy!
-          user.create_verification_code!(code: SecureRandom.hex(16))
-          Services::Result.new(
-            success?: true,
-            data: { user: user },
-            status: :ok,
-            message: 'Account activated successfully.'
-          )
-        else
-          Services::Result.new(
-            success?: false,
-            errors: ['Invalid or expired activation code.'],
-            status: :unprocessable_content,
-            message: 'Account activation failed: invalid or expired code.'
-          )
+        ActiveRecord::Base.transaction do
+          if user.activation_code&.code == code && user.activation_code.expires_at.future?
+            user.update!(active: true)
+            user.activation_code.destroy!
+            user.create_verification_code!(code: SecureRandom.hex(16))
+            Services::Result.new(
+              success?: true,
+              data: { user: user },
+              status: :ok,
+              message: 'Account activated successfully.'
+            )
+          else
+            Services::Result.new(
+              success?: false,
+              errors: ['Invalid or expired activation code.'],
+              status: :unprocessable_content,
+              message: 'Account activation failed: invalid or expired code.'
+            )
+          end
         end
       rescue ActiveRecord::RecordInvalid => e
         Rails.logger.error("Account activation failed for user #{user.id} due to validation: #{e.message}")
@@ -110,7 +112,7 @@ module Services
       return user_activated unless user.unactivated?
 
       begin
-        UserMailer.dial_activation_code(user, user.activation_code.code)
+        UserMailer.dial_activation_code(user, user.activation_code.code).deliver_later
         Services::Result.new(
           success?: true,
           status: :ok,
@@ -150,9 +152,9 @@ module Services
       end
     end
 
-    def blacklist_user(id); end
+    def self.blacklist_user(id); end
 
-    def whitelist_user(id); end
+    def self.whitelist_user(id); end
 
     private
 

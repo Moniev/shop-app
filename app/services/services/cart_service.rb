@@ -21,14 +21,7 @@ module Services
     # @return [Services::Result] An object indicating success/failure and relevant data/errors.
     def add_product(product_id, quantity)
       product = Product.find_by(id: product_id)
-      unless product
-        return Services::Result.new(
-          success?: false,
-          errors: ['Product not found.'],
-          status: :not_found,
-          message: 'Product not found.'
-        )
-      end
+      return product_not_found unless product
 
       quantity = quantity.to_i
       unless quantity.positive?
@@ -78,14 +71,7 @@ module Services
     # @return [Services::Result] An object indicating success/failure and relevant data/errors.
     def remove_product(item_id, quantity_to_remove = nil)
       item = @user.cart_items.find_by(id: item_id)
-      unless item
-        return Services::Result.new(
-          success?: false,
-          errors: ['Cart item not found.'],
-          status: :not_found,
-          message: 'Cart item not found.'
-        )
-      end
+      return product_not_found unless item
 
       quantity_to_remove = quantity_to_remove.to_i if quantity_to_remove.present?
 
@@ -146,5 +132,18 @@ module Services
         items_count: items_count
       }
     end
+
+    private
+
+    def product_not_found
+      Services::Result.new(
+        success?: false,
+        errors: ['Cart item not found.'],
+        status: :not_found,
+        message: 'Cart item not found.'
+      )
+    end
+
+    private_class_method :product_not_found
   end
 end

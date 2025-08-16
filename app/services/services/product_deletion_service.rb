@@ -18,32 +18,34 @@ module Services
           message: 'Product deletion failed.'
         )
       end
-      ActiveRecord::Base.transaction do
-        product.destroy!
+      begin
+        ActiveRecord::Base.transaction do
+          product.destroy!
 
-        Services::ProductCachingService.invalidate_index_pages
+          Services::ProductCachingService.invalidate_index_pages
+        end
+        Services::Result.new(
+          success?: true,
+          status: :no_content,
+          message: 'Product deleted successfully.'
+        )
+      rescue ActiveRecord::RecordNotDestroyed => e
+        Rails.logger.error("Product deletion failed for ID #{product.id}: #{e.message}")
+        Services::Result.new(
+          success?: false,
+          errors: product.errors.full_messages,
+          status: :unprocessable_content,
+          message: 'Product deletion failed.'
+        )
+      rescue StandardError => e
+        Rails.logger.error("Unexpected error during product deletion for ID #{product.id}: #{e.message}")
+        Services::Result.new(
+          success?: false,
+          errors: ['An unexpected error occurred during product deletion.'],
+          status: :internal_server_error,
+          message: 'An unexpected error occurred.'
+        )
       end
-      Services::Result.new(
-        success?: true,
-        status: :no_content,
-        message: 'Product deleted successfully.'
-      )
-    rescue ActiveRecord::RecordNotDestroyed => e
-      Rails.logger.error("Product deletion failed for ID #{product.id}: #{e.message}")
-      Services::Result.new(
-        success?: false,
-        errors: product.errors.full_messages,
-        status: :unprocessable_content,
-        message: 'Product deletion failed.'
-      )
-    rescue StandardError => e
-      Rails.logger.error("Unexpected error during product deletion for ID #{product.id}: #{e.message}")
-      Services::Result.new(
-        success?: false,
-        errors: ['An unexpected error occurred during product deletion.'],
-        status: :internal_server_error,
-        message: 'An unexpected error occurred.'
-      )
     end
   end
 end

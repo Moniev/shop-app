@@ -132,6 +132,18 @@ module Api
       end
     end
 
+    def set_user_by_mail
+      @user = User.find_by(mail: params[:mail])
+      return if @user
+
+      result = Services::Result.new(
+        success?: false,
+        errors: ['User with this email not found.'],
+        status: :not_found
+      )
+      bind_data_and_render(result, 'shared/error')
+    end
+
     protected
 
     attr_reader :decoded_jwt_token

@@ -17,6 +17,7 @@ class User < ApplicationRecord
   has_many :comments, dependent: :destroy
   has_many :cart_items, -> { where(order_id: nil) }, class_name: 'Item', dependent: :destroy
   has_many :bans, foreign_key: :owner_id, dependent: :destroy
+  has_many :refunds
 
   accepts_nested_attributes_for :user_detail
 
@@ -25,7 +26,7 @@ class User < ApplicationRecord
   validates :password_digest, presence: true
 
   def activated?
-    self.active
+    active
   end
 
   def unactivated?
@@ -33,7 +34,7 @@ class User < ApplicationRecord
   end
 
   def verified?
-    self.verified
+    verified
   end
 
   def unverified?

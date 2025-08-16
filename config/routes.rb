@@ -11,7 +11,7 @@ Rails.application.routes.draw do
         patch 'activate'
         patch 'verify'
 
-        scope 'password', as: 'password' do
+        scope 'password', as: :password do
           post 'reset', action: :request_reset
           patch 'reset', action: :confirm_reset
         end
@@ -66,8 +66,8 @@ Rails.application.routes.draw do
 
       resource :cart, controller: :cart, only: [:show] do
         member do
-          post 'add/:product_id', to: 'cart#add', as: 'add_to'
-          delete 'revoke/:item_id', to: 'cart#revoke', as: 'revoke_from'
+          post 'add/:product_id', to: 'cart#add', as: :add_to
+          delete 'revoke/:item_id', to: 'cart#revoke', as: :revoke_from
           delete 'clear'
         end
       end

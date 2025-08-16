@@ -50,5 +50,7 @@ module Services
       version = Rails.cache.fetch(VERSION_KEY) { 1 }
       "#{INDEX_KEY_PREFIX}:#{page}:#{version}"
     end
+
+    private_class_method :index_cache_key
   end
 end

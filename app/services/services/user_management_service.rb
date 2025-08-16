@@ -65,7 +65,7 @@ module Services
     def self.verify(user, code)
       return user_not_found_result unless user && code
 
-      return user_verified if user.verified?
+      return user_verified unless user.unverified?
 
       begin
         if user.verification_code&.code == code && user.verification_code.expires_at.future?

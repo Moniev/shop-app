@@ -25,7 +25,7 @@ module Services
           status: :created,
           message: 'Product created successfully.'
         )
-      rescue ActiveRecord::RecordInvalid => e
+      rescue ActiveRecord::RecordInvalid
         Services::Result.new(
           success?: false,
           errors: product.errors.full_messages,

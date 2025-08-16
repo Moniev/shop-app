@@ -119,18 +119,6 @@ module Api
 
       private
 
-      def set_user_by_mail
-        @user = User.find_by(mail: params[:mail])
-        return if @user
-
-        result = Services::Result.new(
-          success?: false,
-          errors: ['User with this email not found.'],
-          status: :not_found
-        )
-        bind_data_and_render(result, 'shared/error')
-      end
-
       def bind_data_and_render(result, view_name, locals = {})
         bind_data(result)
         @token = @data[:token] if @data.is_a?(Hash)

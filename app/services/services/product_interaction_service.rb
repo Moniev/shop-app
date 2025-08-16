@@ -32,7 +32,7 @@ module Services
         status: :created,
         message: 'Product liked successfully.'
       )
-    rescue ActiveRecord::RecordInvalid => e
+    rescue ActiveRecord::RecordInvalid
       Services::Result.new(
         success?: false,
         errors: product_like.errors.full_messages,
@@ -67,7 +67,7 @@ module Services
         status: :ok,
         message: 'Product unliked successfully.'
       )
-    rescue ActiveRecord::RecordNotDestroyed => e
+    rescue ActiveRecord::RecordNotDestroyed
       Services::Result.new(
         success?: false,
         errors: product_like.errors.full_messages,
@@ -102,7 +102,7 @@ module Services
         status: product_rate.previous_changes.key?('id') ? :created : :ok,
         message: product_rate.previous_changes.key?('id') ? 'Product rated successfully.' : 'Product rating updated successfully.'
       )
-    rescue ActiveRecord::RecordInvalid => e
+    rescue ActiveRecord::RecordInvalid
       Services::Result.new(
         success?: false,
         errors: product_rate.errors.full_messages,
@@ -148,7 +148,7 @@ module Services
         status: :created,
         message: 'Comment added successfully.'
       )
-    rescue ActiveRecord::RecordInvalid => e
+    rescue ActiveRecord::RecordInvalid
       Services::Result.new(
         success?: false,
         errors: comment.errors.full_messages,
@@ -182,7 +182,7 @@ module Services
         status: :ok,
         message: 'Comment updated successfully.'
       )
-    rescue ActiveRecord::RecordInvalid => e
+    rescue ActiveRecord::RecordInvalid
       Services::Result.new(
         success?: false,
         errors: comment.errors.full_messages,
@@ -216,7 +216,7 @@ module Services
         status: :ok,
         message: 'Comment removed successfully.'
       )
-    rescue ActiveRecord::RecordNotDestroyed => e
+    rescue ActiveRecord::RecordNotDestroyed
       Services::Result.new(
         success?: false,
         errors: comment.errors.full_messages,

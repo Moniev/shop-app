@@ -3,80 +3,130 @@
 require 'rails_helper'
 
 RSpec.describe Services::PaymentCreationService, type: :service do
-  let!(:user) { create(:user) }
-  let!(:order) { create(:order, user: user) }
-  let(:stripe_token) { 'tok_valid_token' }
-  let(:payment_processor) { class_double(Services::PaymentProcessingService) }
+  let(:user) { create(:user) }
+  let!(:order) { create(:order, :with_items, items_count: 2, user: user) }
+
+  let(:stripe_payment_intent) do
+    instance_double(Stripe::PaymentIntent, id: 'pi_12345', client_secret: 'pi_12345_secret_67890',
+                                           status: 'requires_payment_method')
+  end
 
   before do
-    stub_const('Services::PaymentProcessingService', payment_processor)
-    allow(payment_processor).to receive(:call).and_return(Services::Result.new(success?: true))
+    allow_any_instance_of(CartObserver).to receive(:after_create)
+    allow_any_instance_of(CartObserver).to receive(:after_update)
+    allow_any_instance_of(CartObserver).to receive(:after_destroy)
+
+    allow_any_instance_of(OrderObserver).to receive(:after_create)
+    allow_any_instance_of(OrderObserver).to receive(:after_destroy)
+    allow_any_instance_of(OrderObserver).to receive(:after_update)
+  end
+
+  before do
+    allow(Stripe::PaymentIntent).to receive(:create).and_return(stripe_payment_intent)
+    allow(Stripe::PaymentIntent).to receive(:update).and_return(stripe_payment_intent)
+    allow(Stripe::PaymentIntent).to receive(:retrieve).and_return(stripe_payment_intent)
   end
 
   describe '.call' do
-    context 'with valid parameters' do
-      it 'calls the PaymentProcessingService with the correct arguments' do
-        expect(payment_processor).to receive(:call).with(order: order, stripe_token: stripe_token)
-        described_class.call(user: user, order_id: order.id, stripe_token: stripe_token)
+    subject(:call_service) { described_class.call(user: user, order_id: order.id) }
+
+    context 'when order is valid and unpaid' do
+      context 'and a payment intent does not yet exist' do
+        it 'calls Stripe::PaymentIntent.create with correct parameters' do
+          expect(Stripe::PaymentIntent).to receive(:create).with(
+            amount: 19_998,
+            currency: 'pln',
+            metadata: { order_id: order.id }
+          ).and_return(stripe_payment_intent)
+
+          call_service
+        end
+
+        it 'updates the order with the new payment_intent_id' do
+          expect { call_service }.to change { order.reload.stripe_payment_intent_id }.from(nil).to('pi_12345')
+        end
+
+        it 'returns a successful result with the client_secret' do
+          result = call_service
+          expect(result.success?).to be true
+          expect(result.data[:client_secret]).to eq('pi_12345_secret_67890')
+          expect(result.status).to eq(:ok)
+        end
       end
 
-      it 'returns the result from the PaymentProcessingService' do
-        success_result = Services::Result.new(success?: true, message: 'Processing complete')
-        allow(payment_processor).to receive(:call).and_return(success_result)
+      context 'and a payment intent already exists' do
+        let!(:order) do
+          create(:order, :with_items, items_count: 3, user: user).tap do |o|
+            o.update_column(:stripe_payment_intent_id, 'pi_existing')
+          end
+        end
 
-        result = described_class.call(user: user, order_id: order.id, stripe_token: stripe_token)
-        expect(result).to eq(success_result)
+        it 'calls Stripe::PaymentIntent.update with correct parameters' do
+          expect(Stripe::PaymentIntent).to receive(:update).with(
+            'pi_existing',
+            amount: 29_997,
+            currency: 'pln'
+          ).and_return(stripe_payment_intent)
+
+          call_service
+        end
+
+        it 'does NOT call Stripe::PaymentIntent.create' do
+          expect(Stripe::PaymentIntent).not_to receive(:create)
+          call_service
+        end
       end
     end
 
     context 'when the order is not found' do
-      it 'returns a not_found failure result' do
-        result = described_class.call(user: user, order_id: -1, stripe_token: stripe_token)
+      subject(:call_service) { described_class.call(user: user, order_id: -1) }
 
-        expect(result.success?).to be false
-        expect(result.status).to eq(:not_found)
-        expect(result.errors).to include('Order not found or does not belong to the user.')
-      end
-
-      it 'does not call the PaymentProcessingService' do
-        expect(payment_processor).not_to receive(:call)
-        described_class.call(user: user, order_id: -1, stripe_token: stripe_token)
-      end
-    end
-
-    context 'when the order does not belong to the user' do
-      let!(:another_user) { create(:user) }
-      let!(:another_order) { create(:order, user: another_user) }
-
-      it 'returns a not_found failure result' do
-        result = described_class.call(user: user, order_id: another_order.id, stripe_token: stripe_token)
+      it 'returns a failure result with a not_found status' do
+        result = call_service
         expect(result.success?).to be false
         expect(result.status).to eq(:not_found)
       end
 
-      it 'does not call the PaymentProcessingService' do
-        expect(payment_processor).not_to receive(:call)
-        described_class.call(user: user, order_id: another_order.id, stripe_token: stripe_token)
+      it 'does not call the Stripe API' do
+        expect(Stripe::PaymentIntent).not_to receive(:create)
+        expect(Stripe::PaymentIntent).not_to receive(:update)
+        call_service
       end
     end
 
-    context 'when the order has already been paid for' do
-      before do
-        allow(order).to receive(:payment_status_paid?).and_return(true)
-        allow(user.orders).to receive(:find_by).with(id: order.id).and_return(order)
-      end
+    context 'when the order is already paid' do
+      let(:order) { create(:order, :with_items, :paid, user: user) }
 
-      it 'returns an unprocessable_content failure result' do
-        result = described_class.call(user: user, order_id: order.id, stripe_token: stripe_token)
-
+      it 'returns a failure result with an unprocessable_content status' do
+        result = call_service
         expect(result.success?).to be false
         expect(result.status).to eq(:unprocessable_content)
         expect(result.errors).to include('This order has already been paid for.')
       end
+    end
 
-      it 'does not call the PaymentProcessingService' do
-        expect(payment_processor).not_to receive(:call)
-        described_class.call(user: user, order_id: order.id, stripe_token: stripe_token)
+    context 'when the Stripe API raises an error' do
+      before do
+        allow(Stripe::PaymentIntent).to receive(:create).and_raise(Stripe::APIError, 'Stripe is down')
+      end
+
+      it 'returns a failure result with a service_unavailable status' do
+        result = call_service
+        expect(result.success?).to be false
+        expect(result.status).to eq(:service_unavailable)
+        expect(result.message).to eq('Stripe is down')
+      end
+    end
+
+    context 'when updating the order record fails' do
+      before do
+        allow_any_instance_of(Order).to receive(:update!).and_raise(ActiveRecord::RecordInvalid.new(order))
+      end
+
+      it 'returns a failure result with validation errors' do
+        result = call_service
+        expect(result.success?).to be false
+        expect(result.status).to eq(:unprocessable_content)
       end
     end
   end

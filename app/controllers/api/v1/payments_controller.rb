@@ -53,8 +53,7 @@ module Api
       def create
         result = Services::PaymentCreationService.call(
           user: current_user,
-          order_id: payment_params[:order_id],
-          stripe_token: payment_params[:stripe_token]
+          order_id: payment_params[:order_id]
         )
 
         bind_data_and_render(result, 'show')
@@ -84,7 +83,7 @@ module Api
       #
       # @return [ActionController::Parameters] An object with the permitted parameters.
       def payment_params
-        params.require(:payment).permit(:order_id, :stripe_token)
+        params.require(:payment).permit(:order_id)
       end
     end
   end

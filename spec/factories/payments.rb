@@ -8,15 +8,15 @@ FactoryBot.define do
     status { :unpaid }
     payment_method { 'stripe' }
     currency { 'pln' }
-
-    sequence(:transaction_id) { |n| "tx_#{SecureRandom.hex(8)}#{n}" }
-
     error_message { nil }
+
+    sequence(:stripe_payment_intent_id) { |n| "pi_#{SecureRandom.hex(12)}#{n}" }
+
     stripe_charge_id { nil }
 
     trait :paid do
       status { :paid }
-      sequence(:stripe_charge_id) { |n| "ch_#{SecureRandom.hex(8)}#{n}" }
+      sequence(:stripe_charge_id) { |n| "ch_#{SecureRandom.hex(12)}#{n}" }
     end
 
     trait :failed do
@@ -26,7 +26,7 @@ FactoryBot.define do
 
     trait :refunded do
       status { :refunded }
-      sequence(:stripe_charge_id) { |n| "ch_#{SecureRandom.hex(8)}#{n}" }
+      sequence(:stripe_charge_id) { |n| "ch_#{SecureRandom.hex(12)}#{n}" }
     end
   end
 end

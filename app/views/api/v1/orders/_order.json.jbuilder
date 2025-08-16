@@ -14,6 +14,6 @@ json.cache! ['order_partial', order.id, order.updated_at, order.items.maximum(:u
     json.product_name item.product.name
     json.quantity item.quantity
     json.price_at_purchase item.price_at_purchase
-    json.subtotal item.quantity * item.price_at_purchase
+    json.subtotal item.subtotal
   end
 end

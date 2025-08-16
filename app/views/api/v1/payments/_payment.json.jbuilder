@@ -12,9 +12,7 @@ json.cache! ['payment_partial', payment.id, payment.updated_at, payment.order&.u
 
   if payment.order.present?
     json.order do
-      json.id payment.order.id
-      json.total_amount payment.order.total_amount
-      json.status payment.order.status
+      json.partial! 'api/v1/orders/order', order: payment.order
     end
   end
 end

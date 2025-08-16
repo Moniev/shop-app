@@ -13,8 +13,9 @@ FactoryBot.define do
       end
 
       after(:create) do |order, evaluator|
-        create_list(:item, evaluator.items_count, order: order)
+        create_list(:item, evaluator.items_count, order: order, price_at_purchase: 99.99)
         order.reload
+        order.save!
       end
     end
 
@@ -22,7 +23,7 @@ FactoryBot.define do
       payment_status { :paid }
 
       after(:create) do |order|
-        create(:payment, order: order, status: :completed, amount: order.total_amount)
+        create(:payment, :paid, order: order, amount: order.total_amount)
       end
     end
 
@@ -43,8 +44,8 @@ FactoryBot.define do
     price_at_purchase { product.price }
 
     trait :in_cart do
-      association :user
       order { nil }
+      association :user
     end
   end
 

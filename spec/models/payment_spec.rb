@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Payment, type: :model do
-  let(:order) { create(:order) }
+  let!(:order) { create(:order) }
 
   describe 'associations' do
     it { should belong_to(:order) }
@@ -13,40 +13,21 @@ RSpec.describe Payment, type: :model do
     it do
       should define_enum_for(:status)
         .with_values(unpaid: 0, paid: 1, failed: 2, refunded: 3)
-        .with_prefix
+        .with_prefix(:status)
     end
   end
 
   describe 'validations' do
+    subject { create(:payment, order: order) }
+
     it { should validate_presence_of(:amount) }
     it { should validate_numericality_of(:amount).is_greater_than(0) }
     it { should validate_presence_of(:status) }
     it { should validate_presence_of(:payment_method) }
-
-    it 'validates uniqueness of transaction_id' do
-      create(:payment, order: order, transaction_id: 'unique_tx_123')
-      should validate_uniqueness_of(:transaction_id).allow_nil
-    end
-
-    context 'when status is paid' do
-      subject { build(:payment, :paid, order: order) }
-
-      it { should validate_presence_of(:stripe_charge_id) }
-
-      it 'is invalid on update without a currency' do
-        payment = create(:payment, :paid, order: order)
-        payment.currency = nil
-        expect(payment).not_to be_valid
-        expect(payment.errors[:currency]).to include("can't be blank")
-      end
-    end
-
-    context 'when status is not paid' do
-      subject { build(:payment, status: :unpaid, order: order) }
-
-      it { should_not validate_presence_of(:stripe_charge_id) }
-      it { should_not validate_presence_of(:currency) }
-    end
+    it { should validate_presence_of(:currency) }
+    it { should validate_presence_of(:stripe_payment_intent_id) }
+    it { should validate_uniqueness_of(:stripe_payment_intent_id) }
+    it { should validate_uniqueness_of(:stripe_charge_id).allow_nil }
   end
 
   describe 'callbacks' do
@@ -66,40 +47,85 @@ RSpec.describe Payment, type: :model do
   end
 
   describe 'instance methods' do
-    let(:payment) { create(:payment, order: order, status: :unpaid, stripe_charge_id: 'ch_xyz789') }
+    let(:payment) { create(:payment, order: order, status: :unpaid) }
 
     describe '#mark_as_paid!' do
       it 'updates the status to paid' do
         payment.mark_as_paid!
-        expect(payment.status).to eq('paid')
+        expect(payment.reload.status_paid?).to be(true)
       end
     end
 
     describe '#mark_as_failed!' do
-      let(:unpaid_payment) { create(:payment, order: order, status: :unpaid) }
-
       it 'updates the status to failed' do
-        unpaid_payment.mark_as_failed!
-        expect(unpaid_payment.status).to eq('failed')
+        payment.mark_as_failed!
+        expect(payment.reload.status_failed?).to be(true)
       end
 
       it 'sets the error_message when provided' do
         error_msg = 'Insufficient funds'
-        unpaid_payment.mark_as_failed!(error_msg)
-        expect(unpaid_payment.error_message).to eq(error_msg)
+        payment.mark_as_failed!(error_msg)
+        expect(payment.reload.error_message).to eq(error_msg)
+      end
+    end
+
+    describe '#mark_as_refunded!' do
+      it 'updates the status to refunded' do
+        payment.mark_as_refunded!
+        expect(payment.reload.status_refunded?).to be(true)
       end
     end
   end
 
-  describe 'creation' do
-    it 'is valid with valid attributes' do
-      payment = build(:payment, order: order)
-      expect(payment).to be_valid
+  describe '.create_from_payment_intent' do
+    let!(:order) { create(:order, stripe_payment_intent_id: 'pi_12345') }
+
+    let(:charge) do
+      OpenStruct.new(
+        id: 'ch_67890',
+        payment_method_details: OpenStruct.new(
+          type: 'card',
+          card: OpenStruct.new(brand: 'visa')
+        )
+      )
     end
 
-    it 'is invalid without an order' do
-      payment = build(:payment, order: nil)
-      expect(payment).not_to be_valid
+    let(:payment_intent) do
+      OpenStruct.new(
+        id: 'pi_12345',
+        amount_received: 9999,
+        currency: 'pln',
+        latest_charge: charge
+      )
+    end
+
+    context 'when an order with the corresponding payment_intent_id exists' do
+      it 'creates a new Payment record' do
+        expect do
+          described_class.create_from_payment_intent(payment_intent)
+        end.to change(Payment, :count).by(1)
+      end
+
+      it 'assigns correct attributes to the new payment' do
+        payment = described_class.create_from_payment_intent(payment_intent)
+        expect(payment.order).to eq(order)
+        expect(payment.amount).to eq(99.99)
+        expect(payment.status_paid?).to be(true)
+        expect(payment.payment_method).to eq('card (visa)')
+        expect(payment.stripe_payment_intent_id).to eq('pi_12345')
+        expect(payment.stripe_charge_id).to eq('ch_67890')
+        expect(payment.currency).to eq('PLN')
+      end
+    end
+
+    context 'when an order with the corresponding payment_intent_id does not exist' do
+      it 'raises an ActiveRecord::RecordNotFound error' do
+        non_existent_payment_intent = OpenStruct.new(id: 'pi_non_existent')
+
+        expect do
+          described_class.create_from_payment_intent(non_existent_payment_intent)
+        end.to raise_error(ActiveRecord::RecordNotFound)
+      end
     end
   end
 end

@@ -143,7 +143,5 @@ module Services
         message: 'Cart item not found.'
       )
     end
-
-    private_class_method :product_not_found
   end
 end

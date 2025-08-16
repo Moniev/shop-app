@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_10_184448) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_16_164317) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -155,6 +155,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_10_184448) do
     t.text "delivery_address"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "stripe_payment_intent_id"
+    t.index ["stripe_payment_intent_id"], name: "index_orders_on_stripe_payment_intent_id", unique: true
     t.index ["user_id"], name: "index_orders_on_user_id"
   end
 
@@ -163,14 +165,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_10_184448) do
     t.decimal "amount", precision: 10, scale: 2, null: false
     t.integer "status", default: 0, null: false
     t.string "payment_method", null: false
-    t.string "transaction_id"
-    t.string "stripe_charge_id"
+    t.string "stripe_payment_intent_id"
     t.string "currency", null: false
     t.text "error_message"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "stripe_charge_id"
     t.index ["order_id"], name: "index_payments_on_order_id"
-    t.index ["transaction_id"], name: "index_payments_on_transaction_id", unique: true
+    t.index ["stripe_charge_id"], name: "index_payments_on_stripe_charge_id", unique: true
+    t.index ["stripe_payment_intent_id"], name: "index_payments_on_stripe_payment_intent_id", unique: true
   end
 
   create_table "product_categories", id: false, force: :cascade do |t|

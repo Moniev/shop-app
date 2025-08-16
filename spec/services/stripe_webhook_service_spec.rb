@@ -3,22 +3,34 @@
 require 'rails_helper'
 
 RSpec.describe Services::StripeWebhookService, type: :service do
-  let!(:order) { create(:order) }
-  let!(:payment) { create(:payment, order: order, stripe_charge_id: 'ch_123') }
-  let(:charge_object) { OpenStruct.new(id: payment.stripe_charge_id) }
-
   describe '.handle' do
-    context 'with a "charge.succeeded" event' do
-      let(:event) { OpenStruct.new(type: 'charge.succeeded', data: OpenStruct.new(object: charge_object)) }
+    context 'with a "payment_intent.succeeded" event' do
+      let!(:order) { create(:order, stripe_payment_intent_id: 'pi_123') }
+      let(:payment_intent_object) do
+        OpenStruct.new(
+          id: 'pi_123',
+          amount_received: 5000,
+          currency: 'pln',
+          latest_charge: OpenStruct.new(
+            id: 'ch_456',
+            payment_method_details: OpenStruct.new(
+              type: 'card',
+              card: OpenStruct.new(brand: 'visa')
+            )
+          )
+        )
+      end
+      let(:event) do
+        OpenStruct.new(type: 'payment_intent.succeeded', data: OpenStruct.new(object: payment_intent_object))
+      end
 
-      it 'updates the payment status to paid' do
-        described_class.handle(event)
-        expect(payment.reload.status).to eq('paid')
+      it 'creates a new Payment record' do
+        expect { described_class.handle(event) }.to change(Payment, :count).by(1)
       end
 
       it 'marks the associated order as paid' do
         described_class.handle(event)
-        expect(order.reload.payment_status).to eq('paid')
+        expect(order.reload.payment_status_paid?).to be true
       end
 
       it 'returns a successful result' do
@@ -27,71 +39,68 @@ RSpec.describe Services::StripeWebhookService, type: :service do
         expect(result.status).to eq(:ok)
       end
 
-      context 'when the payment is already paid' do
-        before { payment.update!(status: :paid) }
+      context 'when the order is already paid' do
+        before { order.update!(payment_status: :paid) }
 
-        it 'does not try to update the payment again' do
-          expect(payment).not_to receive(:mark_as_paid!)
-          described_class.handle(event)
+        it 'does not create a new payment and takes no action' do
+          expect { described_class.handle(event) }.not_to change(Payment, :count)
+          expect(order).not_to receive(:mark_as_paid!)
         end
       end
     end
 
-    context 'with a "charge.failed" event' do
-      let(:charge_object) { OpenStruct.new(id: payment.stripe_charge_id, failure_message: 'Your card was declined.') }
-      let(:event) { OpenStruct.new(type: 'charge.failed', data: OpenStruct.new(object: charge_object)) }
-
-      it 'updates the payment status to failed' do
-        described_class.handle(event)
-        expect(payment.reload.status).to eq('failed')
-        expect(payment.reload.error_message).to eq('Your card was declined.')
+    context 'with a "payment_intent.payment_failed" event' do
+      let!(:order) { create(:order, stripe_payment_intent_id: 'pi_failed_123') }
+      let(:payment_intent_object) { OpenStruct.new(id: 'pi_failed_123') }
+      let(:event) do
+        OpenStruct.new(type: 'payment_intent.payment_failed', data: OpenStruct.new(object: payment_intent_object))
       end
 
       it 'updates the order payment status to failed' do
         described_class.handle(event)
-        expect(order.reload.payment_status).to eq('failed')
+        expect(order.reload.payment_status_failed?).to be true
       end
     end
 
     context 'with a "charge.refunded" event' do
+      let!(:order) { create(:order) }
+      let!(:payment) { create(:payment, :paid, order: order, stripe_charge_id: 'ch_123') }
+      let(:charge_object) { OpenStruct.new(id: 'ch_123') }
       let(:event) { OpenStruct.new(type: 'charge.refunded', data: OpenStruct.new(object: charge_object)) }
-      before { payment.update!(status: :paid) }
 
       it 'updates the payment status to refunded' do
         described_class.handle(event)
-        expect(payment.reload.status).to eq('refunded')
+        expect(payment.reload.status_refunded?).to be true
       end
 
-      it 'updates the order status and payment status to refunded' do
+      it 'updates the order payment status to refunded' do
         described_class.handle(event)
-        order.reload
-        expect(order.status).to eq('refunded')
-        expect(order.payment_status).to eq('refunded')
+        expect(order.reload.payment_status_refunded?).to be true
       end
     end
 
     context 'with an unhandled event type' do
       let(:event) { OpenStruct.new(type: 'customer.subscription.created', data: OpenStruct.new(object: {})) }
 
-      it 'logs a warning' do
-        allow(Rails.logger).to receive(:warn)
-        expect(Rails.logger).to receive(:warn).with(/Unhandled Stripe event type/)
+      it 'logs an info message' do
+        expect(Rails.logger).to receive(:info).with(/Unhandled event type/)
         described_class.handle(event)
       end
 
-      it 'returns a successful result' do
+      it 'returns a successful result (no action needed is not an error)' do
         result = described_class.handle(event)
-        expect(result.success?).to be false
-        expect(result.status).to eq(:bad_request)
+        expect(result.success?).to be true
+        expect(result.status).to eq(:ok)
       end
     end
 
     context 'when an unexpected error occurs' do
-      let(:event) { OpenStruct.new(type: 'charge.succeeded', data: OpenStruct.new(object: charge_object)) }
+      let(:event) do
+        OpenStruct.new(type: 'payment_intent.succeeded', id: 'evt_error', data: OpenStruct.new(object: {}))
+      end
 
       before do
-        allow(Payment).to receive(:find_by).and_raise(StandardError, 'Database is down')
-        allow(Rails.logger).to receive(:error)
+        allow(Order).to receive(:find_by).and_raise(StandardError, 'Database is down')
       end
 
       it 'logs the error' do

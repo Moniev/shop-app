@@ -28,7 +28,7 @@ module Services
       Rails.logger.error("Refund cancellation failed for refund ID #{@refund.id}: #{e.message}")
       Services::Result.new(
         success?: false,
-        errors: ['An unexpected error occurred during order cancellation.'],
+        errors: ['An unexpected error occurred during refund cancellation.'],
         status: :internal_server_error,
         message: 'An unexpected error occurred.'
       )
@@ -108,6 +108,8 @@ module Services
         message: 'An unexpected error occurred.'
       )
     end
+
+    private
 
     def wrong_refund_status
       Services::Result.new(

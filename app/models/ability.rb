@@ -14,16 +14,21 @@ class Ability
 
     return unless user.persisted?
 
-    can %i[like unlike rate comment], Product
-    can :manage, :cart
-    can :create, Payment
-    can :show, Payment, order: { user_id: user.id }
-    can :create, Refund
-    can %i[show cancel], Refund, refund: { user_id: user.id }
-    can %i[create read cancel], Order, user_id: user.id
-
-    can %i[manage update_specifics profile_actions], User, id: user.id
     cannot :role, User
+
+    if user.activated?
+      can %i[like unlike rate comment], Product
+      can %i[manage update_specifics profile_actions], User, id: user.id
+    end
+
+    if user.verified?
+      can :manage, :cart
+      can :create, Payment
+      can :show, Payment, order: { user_id: user.id }
+      can :create, Refund
+      can %i[show cancel], Refund, user_id: user.id
+      can %i[create read cancel], Order, user_id: user.id
+    end
 
     if user.admin?
       can :manage, :all
@@ -33,8 +38,8 @@ class Ability
       can :manage, Comment
     elsif user.regular?
       can :read, Comment
-      can :read, Item, item: { user_id: user.id }
-      can %i[update destroy], Comment, comment: { user_id: user.id }
+      can :read, Item, user_id: user.id
+      can %i[update destroy], Comment, user_id: user.id
       cannot :index, User
     end
   end

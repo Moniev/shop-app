@@ -153,6 +153,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_16_164317) do
     t.integer "payment_status", default: 0
     t.datetime "order_date", null: false
     t.text "delivery_address"
+    t.integer "package_carrier"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "stripe_payment_intent_id"

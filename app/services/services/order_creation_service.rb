@@ -9,13 +9,14 @@
 # payment processing, or external API interactions
 module Services
   class OrderCreationService
-    def self.call(user:, cart_item_ids: [])
+    def self.call(user:, package_carrier:, cart_item_ids: [])
       new(user: user, cart_item_ids: cart_item_ids).call
     end
 
-    def initialize(user:, cart_item_ids: [])
+    def initialize(user:, package_carrier:, cart_item_ids: [])
       @user = user
       @cart_item_ids = cart_item_ids
+      @package_carrier = package_carrier
     end
 
     def call
@@ -30,7 +31,7 @@ module Services
     def process_order_creation(cart_items)
       order = nil
       ActiveRecord::Base.transaction do
-        order = @user.orders.create!
+        order = @user.orders.create!(package_carrier: @package_carrier)
         cart_items.update_all(order_id: order.id, user_id: nil)
         order.reload.save!
       end

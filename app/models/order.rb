@@ -10,6 +10,7 @@ class Order < ApplicationRecord
   enum :status, { pending: 0, processing: 1, shipped: 2, delivered: 3, cancelled: 4, refunded: 5 }, prefix: true,
                                                                                                     default: :pending
   enum :payment_status, { unpaid: 0, paid: 1, failed: 2, refunded: 3 }, prefix: true, default: :unpaid
+  enum :package_carrier, { dpd: 0, inpost: 1, fedex: 2, dhl: 3, ups: 4 }
 
   accepts_nested_attributes_for :items, allow_destroy: true
 
@@ -17,6 +18,7 @@ class Order < ApplicationRecord
   validates :status, presence: true
   validates :payment_status, presence: true
   validates :order_date, presence: true
+  validates :package_carrier, presence: true
 
   before_validation :set_order_date, on: :create
   before_save :calculate_total_amount

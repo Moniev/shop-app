@@ -9,6 +9,7 @@ class CreateOrders < ActiveRecord::Migration[8.0]
       t.integer :payment_status, default: 0
       t.datetime :order_date, null: false
       t.text :delivery_address
+      t.integer :package_carrier, null: true
       t.timestamps
     end
   end

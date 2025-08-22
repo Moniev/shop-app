@@ -8,7 +8,7 @@ RSpec.describe Services::OrderCreationService, type: :service do
     let(:product) { create(:product, price: 10.00) }
     let(:cart_item_ids) { [] }
 
-    subject(:call_service) { described_class.call(user: user, cart_item_ids: cart_item_ids) }
+    subject(:call_service) { described_class.call(user: user, cart_item_ids: cart_item_ids, package_carrier: :inpost) }
 
     context 'when the cart is empty' do
       it 'returns a failure result and does not create an order' do

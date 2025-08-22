@@ -10,7 +10,7 @@
 module Services
   class OrderCreationService
     def self.call(user:, package_carrier:, cart_item_ids: [])
-      new(user: user, cart_item_ids: cart_item_ids).call
+      new(user: user, package_carrier: package_carrier, cart_item_ids: cart_item_ids).call
     end
 
     def initialize(user:, package_carrier:, cart_item_ids: [])

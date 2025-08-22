@@ -60,6 +60,15 @@ module Services
     end
 
     def add_product(product, quantity)
+      unless @order.status_pending? || @order.status_processing?
+        return Services::Result.new(
+          success?: false,
+          errors: ["Cannot modify order with status: #{@order.status}"],
+          status: :unprocessable_content,
+          message: "Cannot modify order with status: #{@order.status}."
+        )
+      end
+
       unless product && quantity.to_i.positive?
         return Services::Result.new(success?: false, errors: ['Invalid product or quantity.'],
                                     status: :unprocessable_content, message: 'Failed to add product: invalid input.')
@@ -85,6 +94,14 @@ module Services
     end
 
     def remove_product(product, quantity = nil)
+      unless @order.status_pending? || @order.status_processing?
+        return Services::Result.new(
+          success?: false,
+          errors: ["Cannot modify order with status: #{@order.status}"],
+          status: :unprocessable_content,
+          message: "Cannot modify order with status: #{@order.status}."
+        )
+      end
       item = @order.items.find_by(product_id: product&.id)
 
       unless item

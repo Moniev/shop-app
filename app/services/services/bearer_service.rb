@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'jwt' # Ensure JWT gem is required
-
 # Provides a collection of service objects that encapsulate specific business logic
 # or external integrations.
 #
@@ -151,7 +149,7 @@ module Services
           success?: true,
           data: { is_blacklisted: is_blacklisted },
           status: :ok,
-          message: is_blacklisted ? 'Token found in blacklist cache.' : 'Token not found in blacklist cache.'
+          message: is_blacklisted ? 'Token found in blacklist' : 'Token not found in blacklist cache.'
         )
       rescue Redis::CannotConnectError => e
         Rails.logger.error("Redis error: Failed to check JWT blacklist - #{e.message}. Falling back to DB.")

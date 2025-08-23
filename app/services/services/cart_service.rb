@@ -27,9 +27,9 @@ module Services
       unless quantity.positive?
         return Services::Result.new(
           success?: false,
-          errors: ['Quantity must be greater than 0.'],
+          errors: ['Product quantity must be greater than 0.'],
           status: :unprocessable_content,
-          message: 'Quantity must be greater than 0.'
+          message: 'Product quantity must be greater than 0.'
         )
       end
 

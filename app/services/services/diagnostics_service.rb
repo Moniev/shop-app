@@ -26,7 +26,6 @@ module Services
     #   Returns `status: :service_unavailable` and errors if the check fails.
     def self.readiness_probe
       Services::Instrumentor.check_performed(:readiness)
-
       ActiveRecord::Base.connection
       { status: :ok, message: 'Application is ready' }
     rescue StandardError => e

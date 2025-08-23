@@ -35,7 +35,7 @@ RSpec.describe Payment, type: :model do
       it 'sets the currency to PLN on creation if not provided' do
         payment = build(:payment, order: order, currency: nil)
         payment.valid?
-        expect(payment.currency).to eq('PLN')
+        expect(payment.currency).to eq('pln')
       end
 
       it 'does not override an existing currency' do

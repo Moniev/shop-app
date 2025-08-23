@@ -45,7 +45,6 @@ module Api
       #
       # @param [Hash] :payment The parameters for the payment.
       # @option payment [Integer] :order_id The ID of the order to be paid.
-      # @option payment [String] :stripe_token The single-use token from Stripe.
       #
       # @return [void] Sets instance variables, and Rails implicitly renders
       #   `create.json.jbuilder` (or `show.json.jbuilder` if absent) with the appropriate status.

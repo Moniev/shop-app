@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_16_164317) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_23_100617) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -154,6 +154,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_16_164317) do
     t.datetime "order_date", null: false
     t.text "delivery_address"
     t.integer "package_carrier"
+    t.text "tracking_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "stripe_payment_intent_id"
@@ -222,6 +223,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_16_164317) do
     t.text "description"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "refunds", force: :cascade do |t|
+    t.text "description", null: false
+    t.text "reason", null: false
+    t.integer "status", default: 0, null: false
+    t.integer "payment_status", default: 0, null: false
+    t.datetime "refund_date"
+    t.bigint "user_id"
+    t.bigint "order_id"
+    t.bigint "payment_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["order_id"], name: "index_refunds_on_order_id"
+    t.index ["payment_id"], name: "index_refunds_on_payment_id"
+    t.index ["user_id"], name: "index_refunds_on_user_id"
   end
 
   create_table "reset_codes", force: :cascade do |t|
@@ -321,6 +338,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_16_164317) do
   add_foreign_key "product_photos", "products"
   add_foreign_key "product_rates", "products"
   add_foreign_key "product_rates", "users"
+  add_foreign_key "refunds", "orders"
+  add_foreign_key "refunds", "payments"
+  add_foreign_key "refunds", "users"
   add_foreign_key "reset_codes", "users"
   add_foreign_key "second_factor_codes", "users"
   add_foreign_key "user_actions", "users"

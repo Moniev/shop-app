@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require 'jwt'
-require 'cancan'
-
 # Namespace for API resources and controllers.
 module Api
   # Base controller for the API.
@@ -46,7 +43,7 @@ module Api
     rescue ArgumentError => e
       render json: { errors: [e.message], message: 'Bad request parameters.' }, status: :bad_request
     rescue StandardError => e
-      Rails.logger.error "#{e.message}"
+      Rails.logger.error e.message.to_s
       render json: { errors: ['An unexpected error occurred.'], message: 'Internal server error.' },
              status: :internal_server_error
     end
@@ -141,7 +138,7 @@ module Api
         errors: ['User with this email not found.'],
         status: :not_found
       )
-      bind_data_and_render(result, 'shared/error')
+      bind_data(result, 'shared/error')
     end
 
     protected

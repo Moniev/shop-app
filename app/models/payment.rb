@@ -44,6 +44,6 @@ class Payment < ApplicationRecord
   private
 
   def set_default_currency
-    self.currency ||= 'PLN'
+    self.currency ||= 'pln'
   end
 end

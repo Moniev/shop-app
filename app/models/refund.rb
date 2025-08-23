@@ -7,7 +7,6 @@ class Refund < ApplicationRecord
 
   validates :reason, presence: true
   validates :description, presence: true
-  validates :refund_date, presence: true
 
   enum :status, { pending: 0, processing: 1, cancelled: 2, refunded: 4, rejected: 5 }, prefix: true, default: :pending
   enum :payment_status, { unpaid: 0, paid: 1, failed: 2, refunded: 3 }, prefix: true, default: :unpaid

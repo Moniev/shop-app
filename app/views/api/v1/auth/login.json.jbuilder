@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
-@data = {}
-@data[:token] = @token if @token.present?
-@data[:user] = json.partial! 'api/v1/users/user_data', user: @user if @user
+json.success true
+json.message @message || 'Operation successful'
 
-json.partial! 'auth', json: json
+json.data do
+  json.merge! @data if @data.present?
+end

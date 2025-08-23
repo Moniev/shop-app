@@ -47,7 +47,7 @@ module Services
           success?: true,
           data: { token: token },
           status: :ok,
-          message: 'Token encoded, but Redis cache failed. Token active via implicit means.'
+          message: 'Token encoded, Token active via implicit means.'
         )
       rescue StandardError => e
         Rails.logger.error("Error during JWT encoding: #{e.message}")
@@ -102,7 +102,7 @@ module Services
         Services::Result.new(
           success?: true,
           status: :ok,
-          message: 'Token blacklisted successfully via Redis.'
+          message: 'Token blacklisted successfully.'
         )
       rescue Redis::CannotConnectError => e
         Rails.logger.error("Redis error: Failed to blacklist JWT - #{e.message}. Falling back to DB.")

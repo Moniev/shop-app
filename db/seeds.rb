@@ -27,7 +27,10 @@ User.find_or_create_by!(mail: ADMIN_MAIL) do |user|
   user.build_user_detail(name: 'Admin',
                          first_name: ENV.fetch('ADMIN_FIRST_NAME'),
                          last_name: ENV.fetch('ADMIN_LAST_NAME'))
-  user.build_user_settings
+  user.build_user_settings(
+    two_factor: true,
+    night_mode: false
+  )
 
   Rails.logger.info "Admin user '#{user.mail}' created successfully."
 end

@@ -40,7 +40,7 @@ module Services
           success?: true,
           message: 'Two-factor authentication code sent. Please verify.',
           status: :accepted,
-          data: { user_id: user.id }
+          data: { user_id: user.id, two_factor_required: true }
         )
       else
         token_result = BearerService.encode({ user_id: user.id })
@@ -136,7 +136,7 @@ module Services
     def self.send_2fa_code(user)
       return user_not_found_result unless user
 
-      code = SecureRandom.hex(8)
+      code = SecureRandom.hex(4)
       redis_key = "user:#{user.id}:2fa_code"
       expires_at = 15.minutes.from_now
 

@@ -24,7 +24,8 @@ module Services
       cart_items = find_cart_items
       return handle_empty_cart if cart_items.empty?
 
-      process_order_creation(cart_items)
+      user_location = find_user_location
+      process_order_creation(cart_items, user_location)
     end
 
     private

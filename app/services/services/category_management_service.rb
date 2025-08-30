@@ -22,7 +22,7 @@ module Services
         status: :created,
         message: 'Category created successfully.'
       )
-    rescue ActiveRecord::RecordInvalid
+    rescue ActiveRecord::RecordInvalid => e
       Services::Result.new(
         success?: false,
         errors: category.errors.full_messages,
@@ -30,13 +30,7 @@ module Services
         message: 'Category creation failed due to validation errors.'
       )
     rescue StandardError => e
-      Rails.logger.error("Category creation failed unexpectedly: #{e.message}")
-      Services::Result.new(
-        success?: false,
-        errors: ['An unexpected error occurred.'],
-        status: :internal_server_error,
-        message: 'An unexpected error occurred.'
-      )
+      handle_unexpected_error(e, 'Category creation failed unexpectedly')
     end
 
     def self.update(category, category_params)
@@ -58,13 +52,7 @@ module Services
         message: 'Category update failed due to validation errors.'
       )
     rescue StandardError => e
-      Rails.logger.error("Category update for category #{category.id} failed unexpectedly: #{e.message}")
-      Services::Result.new(
-        success?: false,
-        errors: ['An unexpected error occurred.'],
-        status: :internal_server_error,
-        message: 'An unexpected error occurred.'
-      )
+      handle_unexpected_error(e, 'Category update failed unexpectedly')
     end
 
     def self.destroy(category)
@@ -87,13 +75,7 @@ module Services
           message: 'Category deletion failed.'
         )
       rescue StandardError => e
-        Rails.logger.error("Category deletion for category #{category.id} failed unexpectedly: #{e.message}")
-        Services::Result.new(
-          success?: false,
-          errors: ['An unexpected error occurred.'],
-          status: :internal_server_error,
-          message: 'An unexpected error occurred.'
-        )
+        handle_unexpected_error(e, 'Category deletion failed unexpectedly')
       end
     end
 
@@ -105,6 +87,16 @@ module Services
         errors: ['Category not found.'],
         status: :not_found,
         message: 'Category not found.'
+      )
+    end
+
+    def self.handle_unexpected_error(error, context_message)
+      Rails.logger.error("#{context_message}: #{error.message}")
+      Services::Result.new(
+        success?: false,
+        errors: ['An unexpected error occurred.'],
+        status: :internal_server_error,
+        message: 'An unexpected error occurred.'
       )
     end
   end

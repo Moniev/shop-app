@@ -148,16 +148,20 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_23_100617) do
 
   create_table "orders", force: :cascade do |t|
     t.bigint "user_id", null: false
+    t.bigint "location_id", null: false
     t.decimal "total_amount", precision: 10, scale: 2, default: "0.0"
     t.integer "status", default: 0
     t.integer "payment_status", default: 0
     t.datetime "order_date", null: false
-    t.text "delivery_address"
     t.integer "package_carrier"
     t.text "tracking_id"
+    t.string "package_type"
+    t.text "notes"
+    t.integer "shipping_service_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "stripe_payment_intent_id"
+    t.index ["location_id"], name: "index_orders_on_location_id"
     t.index ["stripe_payment_intent_id"], name: "index_orders_on_stripe_payment_intent_id", unique: true
     t.index ["user_id"], name: "index_orders_on_user_id"
   end
@@ -199,6 +203,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_23_100617) do
   end
 
   create_table "product_photos", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.text "url"
+    t.text "thumbnail_url"
     t.uuid "product_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -220,6 +226,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_23_100617) do
   create_table "products", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "name"
     t.decimal "price", precision: 10, scale: 2
+    t.decimal "weight_kg", precision: 10, scale: 2
+    t.decimal "height_cm", precision: 10, scale: 2
+    t.decimal "length_cm", precision: 10, scale: 2
+    t.string "type"
     t.text "description"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -329,6 +339,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_23_100617) do
   add_foreign_key "items", "products"
   add_foreign_key "items", "users"
   add_foreign_key "locations", "user_details"
+  add_foreign_key "orders", "locations"
   add_foreign_key "orders", "users"
   add_foreign_key "payments", "orders"
   add_foreign_key "product_categories", "categories"

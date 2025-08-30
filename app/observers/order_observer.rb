@@ -8,6 +8,11 @@ class OrderObserver < ApplicationObserver
   end
 
   def after_update(order)
+    if order.payment_status_paid? || order.status_cancelled?
+      payload = order.to_order_dto
+      Services::Producer.produce(payload)
+    end
+
     Rails.logger.info "OrderObserver: Order updated (Order: #{order.id}, User: #{order.user.id})"
   end
 

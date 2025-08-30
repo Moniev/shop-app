@@ -6,6 +6,7 @@ class Order < ApplicationRecord
   has_many :products, through: :items
   has_one :payment, dependent: :destroy
   has_one :refund, dependent: :destroy
+  belongs_to :location
 
   enum :status, { pending: 0, processing: 1, shipped: 2, delivered: 3, cancelled: 4, refunded: 5 }, prefix: true,
                                                                                                     default: :pending
@@ -37,23 +38,89 @@ class Order < ApplicationRecord
     end
   end
 
-  def self.create_from_cart_for(user)
+  def self.create_from_cart_for(user:, location_id:, package_carrier:)
     cart_items = user.cart_items.includes(:product)
+    user_location = user.user_detail&.locations&.find_by(id: location_id)
 
     return { order: nil, errors: ['Your cart is empty'] } if cart_items.empty?
+    return { order: nil, errors: ['Invalid location'] } unless user_location
 
     order = nil
     transaction do
-      order = user.orders.create!
-      cart_items.update_all(order_id: order.id, user_id: nil)
+      order_location = user_location.dup
+      order_location.user_detail_id = nil
+      order_location.save!
 
-      order.reload
+      order = user.orders.build(location: order_location, package_carrier: package_carrier)
+      order.items = cart_items
       order.save!
+
+      Item.where(id: order.item_ids).update_all(user_id: nil)
     end
 
     { order: order, errors: [] }
   rescue ActiveRecord::RecordInvalid => e
     { order: nil, errors: [e.message] }
+  end
+
+  def to_order_dto
+    {
+      id: id,
+      carrier: package_carrier,
+      receiver: build_receiver_payload,
+      package: build_package_payload,
+      context: build_context_payload
+    }
+  end
+
+  def build_receiver_payload
+    {
+      contact: build_receiver_contact_payload,
+      address: build_receiver_address_payload
+    }
+  end
+
+  def build_receiver_contact_payload
+    detail = user.user_detail
+    company_detail = detail.entrepreneur_detail
+    {
+      company_name: company_detail&.business_name || '',
+      person_name: "#{detail&.first_name} #{detail&.last_name}",
+      phone: user.phone,
+      email: user.mail,
+      nip: company_detail&.nip
+    }
+  end
+
+  def build_receiver_address_payload
+    return {} unless location
+
+    {
+      street: "#{location.street} #{location.building_number}" + (location.apartment_number ? "/#{location.apartment_number}" : ''),
+      postal_code: location.postal_code,
+      city: location.city,
+      country_code: location.country,
+      point_id: ''
+    }
+  end
+
+  def build_package_payload
+    {
+      weight_kg: items.joins(:product).sum('items.quantity * products.weight_kg').round(2),
+      length_cm: products.maximum(:length_cm) || 0,
+      width_cm: products.maximum(:width_cm) || 0,
+      height_cm: products.maximum(:height_cm) || 0,
+      type: package_type || 'parcel'
+    }
+  end
+
+  def build_context_payload
+    {
+      value_in_grosz: total_in_cents,
+      content: products.map(&:name).join(', '),
+      comment: notes || "Order nr: #{id}",
+      pickup_details: {}
+    }
   end
 
   def total_items_count

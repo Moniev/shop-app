@@ -9,12 +9,13 @@
 # payment processing, or external API interactions
 module Services
   class OrderCreationService
-    def self.call(user:, package_carrier:, cart_item_ids: [])
-      new(user: user, package_carrier: package_carrier, cart_item_ids: cart_item_ids).call
+    def self.call(user:, package_carrier:, location_id:, cart_item_ids: [])
+      new(user: user, package_carrier: package_carrier, location_id: location_id, cart_item_ids: cart_item_ids).call
     end
 
-    def initialize(user:, package_carrier:, cart_item_ids: [])
+    def initialize(user:, package_carrier:, location_id:, cart_item_ids: [])
       @user = user
+      @location_id = location_id
       @cart_item_ids = cart_item_ids
       @package_carrier = package_carrier
     end
@@ -28,12 +29,18 @@ module Services
 
     private
 
-    def process_order_creation(cart_items)
+    def process_order_creation(cart_items, user_location)
       order = nil
       ActiveRecord::Base.transaction do
-        order = @user.orders.create!(package_carrier: @package_carrier)
-        cart_items.update_all(order_id: order.id, user_id: nil)
-        order.reload.save!
+        order_location = create_location_snapshot(user_location)
+        order = @user.orders.build(
+          package_carrier: @package_carrier,
+          location: order_location
+        )
+
+        order.items = cart_items
+        order.save!
+        Item.where(id: order.item_ids).update_all(user_id: nil)
       end
 
       Services::Result.new(
@@ -46,6 +53,13 @@ module Services
       handle_validation_error(e, order)
     rescue StandardError => e
       handle_generic_error(e)
+    end
+
+    def create_location_snapshot(user_location)
+      new_location = user_location.dup
+      new_location.user_detail_id = nil
+      new_location.save!
+      new_location
     end
 
     def find_cart_items
@@ -61,6 +75,18 @@ module Services
         success?: false,
         errors: ['Your cart is empty or no items were selected.'],
         status: :unprocessable_content
+      )
+    end
+
+    def find_user_location
+      @user.user_detail&.locations&.find_by(id: @location_id)
+    end
+
+    def handle_invalid_location
+      Services::Result.new(
+        success?: false,
+        errors: ['Invalid shipping address selected.'],
+        status: :not_found
       )
     end
 

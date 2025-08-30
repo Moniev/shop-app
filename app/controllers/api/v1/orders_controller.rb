@@ -69,7 +69,8 @@ module Api
         result = Services::OrderCreationService.call(
           user: current_user,
           cart_item_ids: order_params[:cart_item_ids],
-          package_carrier: order_params[:package_carrier]
+          package_carrier: order_params[:package_carrier],
+          location_id: order_params[:location_id]
         )
         bind_data_and_render(result, 'show')
       end
@@ -192,11 +193,8 @@ module Api
         params.require(:order).permit(:status, :payment_status, :package_carrier, :package_id)
       end
 
-      # Defines permitted parameters for updating an order.
-      #
-      # @return [ActionController::Parameters] An object with the permitted parameters.
       def order_params
-        params.fetch(:order, {}).permit(:package_carrier, cart_item_ids: [])
+        params.fetch(:order, {}).permit(:package_carrier, :location_id, cart_item_ids: [])
       end
 
       def add_product_params

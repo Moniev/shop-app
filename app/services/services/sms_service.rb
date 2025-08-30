@@ -26,7 +26,9 @@ module Services
       # @param body [String] The content of the SMS message.
       # @return [Services::Result]
       def dial(to:, body:)
-        return nil if to.blank? || body.blank?
+        return false if to.blank? || body.blank?
+
+        return false unless twilio_available?
 
         msg = client.messages.create(
           from: from_number,
@@ -69,15 +71,20 @@ module Services
       private
 
       def client
-        @client ||= Twilio::REST::Client.new(credentials[:account_sid], credentials[:auth_token])
-      end
-
-      def credentials
-        Rails.application.credentials.twilio || {}
+        TWILIO_CLIENT
       end
 
       def from_number
-        credentials[:phone_number]
+        ENV.fetch('TWILIO_PHONE_NUMBER', {})
+      end
+
+      def twilio_available?
+        if defined?(TWILIO_CLIENT) && TWILIO_CLIENT
+          true
+        else
+          Rails.logger.warn('Twilio client is not available')
+          false
+        end
       end
     end
   end

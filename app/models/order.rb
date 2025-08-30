@@ -46,7 +46,7 @@ class Order < ApplicationRecord
     return { order: nil, errors: ['Invalid location'] } unless user_location
 
     order = nil
-    transaction do
+    ActiveRecord::Base.transaction do
       order_location = user_location.dup
       order_location.user_detail_id = nil
       order_location.save!

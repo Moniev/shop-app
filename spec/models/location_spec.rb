@@ -3,8 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Location, type: :model do
-  describe 'associatins' do
-    it { should belong_to(:user_detail) }
+  describe 'associations' do
+    it { should belong_to(:user_detail).optional(true) }
   end
 
   describe 'validations' do

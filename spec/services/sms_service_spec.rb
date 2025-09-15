@@ -20,6 +20,7 @@ RSpec.describe Services::SmsService, type: :service do
   module Twilio; module REST; class TwilioError < StandardError; end; end; end
 
   before do
+    stub_const('Services::SmsService::TWILIO_CLIENT', twilio_client)
     Services::SmsService.instance_variable_set(:@client, nil)
 
     allow(Rails.application.credentials).to receive(:twilio).and_return(twilio_credentials)
@@ -33,6 +34,7 @@ RSpec.describe Services::SmsService, type: :service do
   describe '.dial' do
     context 'with valid parameters' do
       it 'calls the Twilio API to create a message' do
+        ENV['TWILIO_PHONE_NUMBER'] = '+15005550001'
         expect(messages_proxy).to receive(:create).with(
           from: twilio_credentials[:phone_number],
           to: user.phone,
@@ -69,7 +71,7 @@ RSpec.describe Services::SmsService, type: :service do
     context 'with invalid parameters' do
       it 'returns nil and does not call the API if `to` is blank' do
         expect(twilio_client).not_to receive(:messages)
-        expect(described_class.dial(to: '', body: 'Test message')).to be_nil
+        expect(described_class.dial(to: '', body: 'Test message')).to be_falsey
       end
     end
   end

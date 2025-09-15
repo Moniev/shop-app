@@ -4,13 +4,13 @@ require 'rails_helper'
 
 RSpec.describe Services::OrderCreationService, type: :service do
   describe '#call' do
-    let!(:user) { create(:user) }
-    let!(:location) { create(:location) }
+    let!(:user) { create(:user, :with_detail) }
+    let!(:location) { user.user_detail.locations.create(attributes_for(:location)) }
     let(:product) { create(:product, price: 10.00) }
     let(:cart_item_ids) { [] }
 
     subject(:call_service) do
-      described_class.call(user: user, location_id: location.id, cart_item_ids: cart_item_ids, package_carrier: :inpost)
+      described_class.call(user: user, package_carrier: :inpost, location_id: location.id, cart_item_ids: cart_item_ids)
     end
 
     context 'when the cart is empty' do
@@ -79,7 +79,9 @@ RSpec.describe Services::OrderCreationService, type: :service do
       let!(:cart_item) { create(:cart_item, user: user, product: product) }
 
       before do
-        allow(user.orders).to receive(:create!).and_raise(ActiveRecord::RecordInvalid.new)
+        order = build(:order, user: user)
+        allow(user.orders).to receive(:build).and_return(order)
+        allow(order).to receive(:save!).and_raise(ActiveRecord::RecordInvalid.new(order))
       end
 
       it 'does not create an order and leaves items in the cart' do
@@ -101,10 +103,9 @@ RSpec.describe Services::OrderCreationService, type: :service do
       let(:error_message) { 'Database connection lost' }
 
       before do
-        cart_items_relation = user.cart_items
-        allow(user).to receive(:cart_items).and_return(cart_items_relation)
-        allow(cart_items_relation).to receive(:update_all).and_raise(StandardError, error_message)
-
+        order = build(:order, user: user)
+        allow(user.orders).to receive(:build).and_return(order)
+        allow(order).to receive(:save!).and_raise(StandardError, error_message)
         allow(Rails.logger).to receive(:error)
       end
 

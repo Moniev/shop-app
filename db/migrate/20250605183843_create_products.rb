@@ -5,6 +5,7 @@ class CreateProducts < ActiveRecord::Migration[8.0]
       t.decimal :price, precision: 10, scale: 2
       t.decimal :weight_kg, precision: 10, scale: 2
       t.decimal :height_cm, precision: 10, scale: 2
+      t.decimal :width_cm, precision: 10, scale: 2
       t.decimal :length_cm, precision: 10, scale: 2
       t.string :type
       t.text :description

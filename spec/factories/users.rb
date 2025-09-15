@@ -37,6 +37,12 @@ FactoryBot.define do
         create(:user_detail, user: user)
       end
     end
+
+    trait :with_full_details do
+      after(:create) do |user|
+        create(:user_detail, user: user, entrepreneur_detail: create(:entrepreneur_detail))
+      end
+    end
   end
 
   factory :user_detail do

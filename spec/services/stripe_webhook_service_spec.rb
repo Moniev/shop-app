@@ -5,7 +5,8 @@ require 'rails_helper'
 RSpec.describe Services::StripeWebhookService, type: :service do
   describe '.handle' do
     context 'with a "payment_intent.succeeded" event' do
-      let!(:order) { create(:order, stripe_payment_intent_id: 'pi_123') }
+      let!(:user) { create(:user, :with_full_details) }
+      let!(:order) { create(:order, stripe_payment_intent_id: 'pi_123', user: user) }
       let(:payment_intent_object) do
         OpenStruct.new(
           id: 'pi_123',

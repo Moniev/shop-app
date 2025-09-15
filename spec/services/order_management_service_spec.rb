@@ -19,10 +19,10 @@ RSpec.describe Services::OrderManagementService, type: :service do
   describe '#update' do
     context 'with valid parameters' do
       it 'updates the order and returns a successful result' do
-        result = service.update({ delivery_address: 'New Address 123' })
+        result = service.update({ notes: 'Hell yeah' })
 
         expect(result.success?).to be true
-        expect(order.reload.delivery_address).to eq('New Address 123')
+        expect(order.reload.notes).to eq('Hell yeah')
         expect(result.status).to eq(:ok)
       end
     end

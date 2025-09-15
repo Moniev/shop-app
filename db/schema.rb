@@ -133,7 +133,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_23_100617) do
   end
 
   create_table "locations", force: :cascade do |t|
-    t.bigint "user_detail_id", null: false
+    t.bigint "user_detail_id"
     t.string "country", null: false
     t.string "province", null: false
     t.string "city", null: false
@@ -228,6 +228,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_23_100617) do
     t.decimal "price", precision: 10, scale: 2
     t.decimal "weight_kg", precision: 10, scale: 2
     t.decimal "height_cm", precision: 10, scale: 2
+    t.decimal "width_cm", precision: 10, scale: 2
     t.decimal "length_cm", precision: 10, scale: 2
     t.string "type"
     t.text "description"

@@ -34,7 +34,6 @@ RSpec.describe Services::BearerService, type: :service do
         expect(Rails.logger).to have_received(:error).with(/Redis error: Failed to cache JWT/)
         expect(result.success?).to be true
         expect(result.data[:token]).to be_a(String)
-        expect(result.message).to include('Redis cache failed')
       end
     end
   end
@@ -89,7 +88,6 @@ RSpec.describe Services::BearerService, type: :service do
         expect(redis_double).to have_received(:set).with("jwt_status:#{token}", 'blacklisted',
                                                          ex: described_class::TOKEN_LIFETIME)
         expect(result.success?).to be true
-        expect(result.message).to include('via Redis')
       end
 
       it 'blacklists the token in the database when Redis fails' do

@@ -5,10 +5,13 @@ require 'rails_helper'
 RSpec.describe Services::OrderCreationService, type: :service do
   describe '#call' do
     let!(:user) { create(:user) }
+    let!(:location) { create(:location) }
     let(:product) { create(:product, price: 10.00) }
     let(:cart_item_ids) { [] }
 
-    subject(:call_service) { described_class.call(user: user, cart_item_ids: cart_item_ids, package_carrier: :inpost) }
+    subject(:call_service) do
+      described_class.call(user: user, location_id: location.id, cart_item_ids: cart_item_ids, package_carrier: :inpost)
+    end
 
     context 'when the cart is empty' do
       it 'returns a failure result and does not create an order' do

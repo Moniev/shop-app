@@ -1,25 +1,25 @@
-version: '3.8'
+version: "3.8"
 
 services:
   app:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-      target: development 
+      target: development
     env_file:
       - ../.env
     command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3000 -b '0.0.0.0'"
     volumes:
-      - ../:/rails 
+      - ../:/rails
     ports:
       - "3000:3000"
     depends_on:
       - db
       - redis
     environment:
-      RAILS_ENV: development 
+      RAILS_ENV: development
       DATABASE_URL: postgresql://postgres:postgres@db:5432/shop_on_rails_development
-      REDIS_URL: redis://redis:6379/0 
+      REDIS_URL: redis://redis:6379/0
 
   db:
     image: postgres:15-alpine
@@ -113,3 +113,4 @@ volumes:
   rabbitmq2-logs:
   rabbitmq3-data:
   rabbitmq3-logs:
+

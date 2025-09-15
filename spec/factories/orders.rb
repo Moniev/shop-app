@@ -5,7 +5,7 @@ FactoryBot.define do
     association :user
     status { :pending }
     payment_status { :unpaid }
-    delivery_address { 'ul. Testowa 1, 00-001 Warszawa' }
+    association :location
 
     trait :with_items do
       transient do

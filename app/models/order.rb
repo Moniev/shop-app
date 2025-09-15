@@ -22,11 +22,19 @@ class Order < ApplicationRecord
   validates :package_carrier, presence: true
 
   before_validation :set_order_date, on: :create
-  before_save :calculate_total_amount
+  before_validation :calculate_total_amount, if: :items_present_for_validation?
 
   scope :recent, -> { order(order_date: :desc).limit(10) }
   scope :completed, -> { where(status: :delivered) }
   scope :pending_payment, -> { where(payment_status: :unpaid) }
+
+  def items_present_for_validation?
+    if association(:items).loaded?
+      items.any? { |i| !i.marked_for_destruction? }
+    else
+      items.exists?
+    end
+  end
 
   def self.for_user(user)
     return none unless user
@@ -39,7 +47,7 @@ class Order < ApplicationRecord
   end
 
   def self.create_from_cart_for(user:, location_id:, package_carrier:)
-    cart_items = user.cart_items.includes(:product)
+    cart_items = user.cart_items.includes(:product).to_a
     user_location = user.user_detail&.locations&.find_by(id: location_id)
 
     return { order: nil, errors: ['Your cart is empty'] } if cart_items.empty?
@@ -47,15 +55,18 @@ class Order < ApplicationRecord
 
     order = nil
     ActiveRecord::Base.transaction do
-      order_location = user_location.dup
-      order_location.user_detail_id = nil
-      order_location.save!
+      order = user.orders.build(location: user_location, package_carrier: package_carrier)
 
-      order = user.orders.build(location: order_location, package_carrier: package_carrier)
-      order.items = cart_items
+      cart_items.each do |cart_item|
+        order.items.build(
+          product: cart_item.product,
+          quantity: cart_item.quantity,
+          price_at_purchase: cart_item.product.price,
+          user: user
+        )
+      end
       order.save!
-
-      Item.where(id: order.item_ids).update_all(user_id: nil)
+      user.cart_items.destroy_all
     end
 
     { order: order, errors: [] }
@@ -158,7 +169,10 @@ class Order < ApplicationRecord
   end
 
   def calculate_total_amount
-    self.total_amount = items.reject(&:marked_for_destruction?).sum do |item|
+    relevant = items.to_a.reject(&:marked_for_destruction?)
+    return if relevant.empty?
+
+    self.total_amount = relevant.sum do |item|
       (item.price_at_purchase || 0) * (item.quantity || 0)
     end
   end

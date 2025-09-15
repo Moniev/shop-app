@@ -31,6 +31,7 @@ RSpec.describe Order, type: :model do
   end
 
   describe 'validations' do
+    subject { build(:order) }
     it { should validate_presence_of(:total_amount) }
     it { should validate_numericality_of(:total_amount).is_greater_than_or_equal_to(0) }
     it { should validate_presence_of(:status) }
@@ -145,7 +146,8 @@ RSpec.describe Order, type: :model do
   end
 
   describe '.create_from_cart_for' do
-    let(:user_with_cart) { create(:user) }
+    let(:user_with_cart) { create(:user, :with_detail) }
+    let!(:location) { user_with_cart.user_detail.locations.create(attributes_for(:location)) }
 
     context "when the user's cart is not empty" do
       before do
@@ -153,34 +155,35 @@ RSpec.describe Order, type: :model do
         create(:item, :in_cart, user: user_with_cart, product: product2, quantity: 1)
       end
 
+      let(:valid_params) { { user: user_with_cart, location_id: location.id, package_carrier: :inpost } }
+
       it 'creates a new order' do
-        expect { Order.create_from_cart_for(user_with_cart) }.to change(Order, :count).by(1)
+        expect { described_class.create_from_cart_for(**valid_params) }.to change(Order, :count).by(1)
       end
 
-      it 'assigns items from the cart to the new order' do
-        result = Order.create_from_cart_for(user_with_cart)
+      it 'assigns items from the cart to the new order and clears the cart' do
+        result = described_class.create_from_cart_for(**valid_params)
         order = result[:order]
         expect(user_with_cart.cart_items.count).to eq(0)
         expect(order.items.count).to eq(2)
       end
 
       it 'correctly calculates the total amount of the order' do
-        result = Order.create_from_cart_for(user_with_cart)
-        order = result[:order]
-        expect(order.total_amount).to eq(250)
+        result = described_class.create_from_cart_for(**valid_params)
+        expect(result[:order].total_amount).to eq(250)
       end
 
       it 'returns the created order and no errors' do
-        result = Order.create_from_cart_for(user_with_cart)
+        result = described_class.create_from_cart_for(**valid_params)
         expect(result[:order]).to be_a(Order)
         expect(result[:errors]).to be_empty
       end
 
       it 'rolls back the transaction if saving the order fails' do
-        allow_any_instance_of(Order).to receive(:save!).and_raise(ActiveRecord::RecordInvalid)
+        allow_any_instance_of(Order).to receive(:save!).and_raise(ActiveRecord::RecordInvalid.new(Order.new))
 
         expect do
-          Order.create_from_cart_for(user_with_cart)
+          described_class.create_from_cart_for(**valid_params)
         end.not_to change(Order, :count)
 
         expect(user_with_cart.cart_items.reload.count).to eq(2)
@@ -188,12 +191,14 @@ RSpec.describe Order, type: :model do
     end
 
     context "when the user's cart is empty" do
+      let(:empty_user_params) { { user: user_with_cart, location_id: location.id, package_carrier: :inpost } }
+
       it 'does not create a new order' do
-        expect { Order.create_from_cart_for(user) }.not_to change(Order, :count)
+        expect { described_class.create_from_cart_for(**empty_user_params) }.not_to change(Order, :count)
       end
 
       it 'returns an error message' do
-        result = Order.create_from_cart_for(user)
+        result = described_class.create_from_cart_for(**empty_user_params)
         expect(result[:order]).to be_nil
         expect(result[:errors]).to include('Your cart is empty')
       end

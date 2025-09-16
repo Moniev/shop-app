@@ -113,9 +113,15 @@ module Api
         bind_data_and_render(result, 'confirm_reset')
       end
 
-      def blacklist_user; end
+      def blacklist_user
+        result = Services::UserManagementService.blacklist_user(params[:user_id])
+        bind_data_and_render(result, 'blacklist_user')
+      end
 
-      def whitelist_user; end
+      def whitelist_user
+        result = Services::UserManagementService.whitelist_user(params[:user_id])
+        bind_data_and_render(result, 'whitelist_user')
+      end
 
       private
 

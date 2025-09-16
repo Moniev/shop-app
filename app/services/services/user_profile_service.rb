@@ -9,17 +9,18 @@
 # payment processing, or external API interactions
 module Services
   class UserProfileService
+    extend Concerns::ResultHelpers
+    extend Concerns::Handlers
+
     def initialize(user)
       @user = user
     end
 
     def update_profile(params)
       if @user.update(params)
-        Services::Result.new(success?: true, data: { user: @user }, status: :ok,
-                             message: 'Profile updated successfully.')
+        success_result(data: { user: @user }, message: 'profile updated successfully')
       else
-        Services::Result.new(success?: false, errors: @user.errors.full_messages, status: :unprocessable_content,
-                             message: 'Profile update failed.')
+        user_unprocessable_content_result(@user, 'failed to update user profile')
       end
     end
 
@@ -28,11 +29,9 @@ module Services
       location = user_detail.locations.first || user_detail.locations.build
 
       if location.update(location_params)
-        Services::Result.new(success?: true, data: { location: location }, status: :ok,
-                             message: 'Location updated successfully.')
+        success_result(data: { location: location }, message: 'Location updated successfully')
       else
-        Services::Result.new(success?: false, errors: location.errors.full_messages,
-                             status: :unprocessable_content, message: 'Location update failed.')
+        uprocessable_content_result(data: { location: location }, message: 'Failed to update location')
       end
     end
 
@@ -40,11 +39,9 @@ module Services
       user_detail = @user.user_detail || @user.build_user_detail
 
       if user_detail.update(user_detail_params)
-        Services::Result.new(success?: true, data: { user_detail: user_detail }, status: :ok,
-                             message: 'Personal details updated successfully.')
+        success_result(user_detail, 'Personal details updated successfully')
       else
-        Services::Result.new(success?: false, errors: user_detail.errors.full_messages,
-                             status: :unprocessable_content, message: 'Personal details update failed.')
+        unprocessable_content_result(data: { location: location }, message: 'Failed to update personal data')
       end
     end
 

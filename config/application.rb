@@ -14,6 +14,7 @@ module ShopOnRails
     config.active_record.observers = :order_observer, :user_observer, :product_observer, :cart_observer,
                                      :verification_code_observer, :activation_code_observer
 
+    config.autoload_paths << Rails.root.join('app', 'services', 'concerns')
     config.load_defaults 8.0
     config.autoload_lib(ignore: %w[assets tasks])
     config.api_only = true

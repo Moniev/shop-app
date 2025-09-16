@@ -12,6 +12,25 @@ module Services
         )
       end
 
+      def invalid_code_result(message_context:)
+        Services::Result.new(
+          success?: false,
+          errors: ["Invalid or expired #{message_context} code."],
+          status: :unprocessable_content,
+          message: "Account #{message_context} failed: invalid or expired code."
+        )
+      end
+
+      def bad_request(errors:, message:)
+        Rails.logger.error("Failed to resolve request: #{message}")
+        Services::Result.new(
+          success?: false,
+          errors: errors,
+          status: :not_found,
+          message: message
+        )
+      end
+
       def user_already_activated_result
         Services::Result.new(
           success?: false,
@@ -86,6 +105,26 @@ module Services
           success?: false,
           errors: errors,
           status: :conflict,
+          message: message
+        )
+      end
+
+      def json_parser_error_result(errors:, message:)
+        Rails.logger.error("Stripe Webhook Error: Invalid payload - #{message}")
+        Services::Result.new(
+          success?: false,
+          errors: errors,
+          status: :bad_request,
+          message: message
+        )
+      end
+
+      def stripe_verification_error_result(errors:, message:)
+        Rails.logger.error("Stripe Webhook Error: Signature verification failed - #{message}")
+        Services::Result.new(
+          success?: false,
+          errors: errors,
+          status: :bad_request,
           message: message
         )
       end

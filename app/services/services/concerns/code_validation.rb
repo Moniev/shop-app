@@ -5,12 +5,7 @@ module Services
     module CodeValidation
       def validate_and_execute_code(code_record, code, message_context)
         unless code_record&.code == code && code_record.expires_at.future?
-          return Services::Result.new(
-            success?: false,
-            errors: ["Invalid or expired #{message_context} code."],
-            status: :unprocessable_content,
-            message: "Account #{message_context} failed: invalid or expired code."
-          )
+          return invalid_code_result(message_context: message_context)
         end
 
         ActiveRecord::Base.transaction do

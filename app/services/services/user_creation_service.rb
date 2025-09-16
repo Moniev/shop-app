@@ -9,52 +9,26 @@
 # payment processing, or external API interactions
 module Services
   class UserCreationService
+    extend Concerns::ResultHelpers
+    extend Concerns::Handlers
+
     def self.call(user_params)
       if User.exists?(mail: user_params[:mail])
-        return Services::Result.new(
-          success?: false,
-          errors: ['User with this email already exists.'],
-          status: :conflict,
-          message: 'User registration failed.'
-        )
+        return conflict_result(errors: ['User with this email already exists'], message: 'User registration failed')
       end
 
       if user_params[:phone].present? && User.exists?(phone: user_params[:phone])
-        return Services::Result.new(
-          success?: false,
-          errors: ['User with this phone number already exists.'],
-          status: :conflict,
-          message: 'User registration failed.'
-        )
+        return conflict_result(errors: ['User with this phone already exists'], message: 'User registration failed')
       end
 
-      user = User.new(user_params)
-      begin
+      with_error_handling do
         ActiveRecord::Base.transaction do
+          user = User.new(user_params)
           user.save!
           user.create_activation_code!(code: SecureRandom.hex(4))
+          success_result(data: { user: user }, message: 'User registered succesfully. Activation code sent',
+                         status: :created)
         end
-        Services::Result.new(
-          success?: true,
-          data: { user: user },
-          status: :created,
-          message: 'User registered successfully. Activation code sent.'
-        )
-      rescue ActiveRecord::RecordInvalid => e
-        Services::Result.new(
-          success?: false,
-          errors: user.errors.full_messages,
-          status: :unprocessable_content,
-          message: 'User registration failed due to validation errors.'
-        )
-      rescue StandardError => e
-        Rails.logger.error("User creation failed: #{e.message}")
-        Services::Result.new(
-          success?: false,
-          errors: ['An unexpected error occurred during user registration.'],
-          status: :internal_server_error,
-          message: 'An unexpected error occurred.'
-        )
       end
     end
   end

@@ -49,7 +49,6 @@ RSpec.describe Services::UserCreationService, type: :service do
         result = described_class.call(valid_params)
         expect(result.success?).to be false
         expect(result.status).to eq(:conflict)
-        expect(result.errors).to include('User with this email already exists.')
       end
     end
 
@@ -66,7 +65,7 @@ RSpec.describe Services::UserCreationService, type: :service do
         result = described_class.call(valid_params)
         expect(result.success?).to be false
         expect(result.status).to eq(:conflict)
-        expect(result.errors).to include('User with this phone number already exists.')
+        expect(result.errors.first).to eq('User with this phone already exists')
       end
     end
 

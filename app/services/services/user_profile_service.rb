@@ -50,10 +50,8 @@ module Services
         unauthorized_result(['User is not an entrepreneur'],
                             'Access denied user is not an entrepreneur')
       end
-
       user_detail = @user.user_detail || @user.build_user_detail
       entrepreneur_detail = user_detail.entrepreneur_detail || user_detail.build_entrepreneur_detail
-
       if entrepreneur_detail.update(entrepreneur_detail_params)
         success_result(data: { data: entrepreneur_detail }, message: 'Entrepreneur details updated successfully')
       else

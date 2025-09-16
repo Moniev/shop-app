@@ -35,18 +35,18 @@ module Services
         Rails.logger.error("Validation failed: #{exc.message}")
         Services::Result.new(
           success?: false,
-          errors: e.record.error_messages,
+          errors: exc.record.errors.full_messages,
           status: :unprocessable_content,
           message: 'Validation failed'
         )
       end
 
-      def success_result(data:, message:)
+      def success_result(data:, message:, status: :ok)
         Rails.logger.info("Successfully finished operation: #{message}")
         Services::Result.new(
           success?: true,
           data: data,
-          status: :ok,
+          status: status,
           message: message
         )
       end
@@ -74,8 +74,18 @@ module Services
         Rails.logger.info("User is not authorized for this action: #{message}")
         Services::Result.new(
           success?: false,
-          status: :authorized,
+          status: :unauthorized,
           errors: errors,
+          message: message
+        )
+      end
+
+      def conflict_result(errors:, message:)
+        Rails.logger.error("Failed to process transaction, data already present in database: #{message}")
+        Services::Result.new(
+          success?: false,
+          errors: errors,
+          status: :conflict,
           message: message
         )
       end

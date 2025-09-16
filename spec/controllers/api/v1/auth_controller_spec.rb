@@ -117,6 +117,7 @@ RSpec.describe Api::V1::AuthController, type: :controller do
 
     context 'when user is not found' do
       it 'returns an not found status' do
+        allow(controller).to receive(:set_user_by_mail).and_call_original
         post :verify_2fa, params: { mail: 'unknown@example.com', second_factor_code: 'some_code' }
         expect(response).to have_http_status(:not_found)
       end

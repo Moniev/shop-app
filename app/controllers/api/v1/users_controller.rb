@@ -164,6 +164,10 @@ module Api
 
       private
 
+      def authorize_role
+        authorize! :role, @user
+      end
+
       # Initializes and returns an instance of UserProfileService for the loaded @user.
       # @return [Services::UserProfileService] An instance of UserProfileService.
       def user_profile_service

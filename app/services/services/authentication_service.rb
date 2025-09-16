@@ -77,7 +77,6 @@ module Services
 
       begin
         if BearerService.redis.with { |conn| conn.get(redis_key) } == code
-          code_from_redis_matches = true
           BearerService.redis.with { |conn| conn.del(redis_key) }
           user.second_factor_code&.destroy
           token_result = BearerService.encode({ user_id: user.id })

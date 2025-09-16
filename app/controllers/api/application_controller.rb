@@ -133,12 +133,7 @@ module Api
       @user = User.find_by(mail: params[:mail])
       return if @user
 
-      result = Services::Result.new(
-        success?: false,
-        errors: ['User with this email not found.'],
-        status: :not_found
-      )
-      bind_data(result, 'shared/error')
+      render json: { errors: ['User with this email not found.'] }, status: :not_found
     end
 
     protected

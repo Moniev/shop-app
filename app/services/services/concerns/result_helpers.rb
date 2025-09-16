@@ -60,6 +60,25 @@ module Services
           message: message
         )
       end
+
+      def destroy_success_result(message:)
+        Rails.logger.info("Record destroyed: #{message}")
+        Services::Result.new(
+          success?: false,
+          status: :no_content,
+          message: message
+        )
+      end
+
+      def unauthorized_result(user:, errors:, message:)
+        Rails.logger.info("User is not authorized for this action: #{message}")
+        Services::Result.new(
+          success?: false,
+          status: :authorized,
+          errors: errors,
+          message: message
+        )
+      end
     end
   end
 end

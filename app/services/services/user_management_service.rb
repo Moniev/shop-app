@@ -60,7 +60,6 @@ module Services
 
     def self.resend_verification_code(user)
       return user_not_found_result unless user
-
       return user_verified unless user.unverified?
 
       with_error_handling(user) do

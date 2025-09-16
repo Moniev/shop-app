@@ -47,9 +47,7 @@ module Services
 
     def update_entrepreneur_details(entrepreneur_detail_params)
       unless @user.entrepreneur?
-        return Services::Result.new(success?: false, errors: ['User is not an entrepreneur.'], status: :forbidden,
-                                    message: 'Access denied: Not an entrepreneur.')
-        unauthorized_result(entrepreneur_detail, ['User is not an entrepreneur'],
+        unauthorized_result(['User is not an entrepreneur'],
                             'Access denied user is not an entrepreneur')
       end
 

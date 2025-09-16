@@ -70,7 +70,7 @@ module Services
         )
       end
 
-      def unauthorized_result(user:, errors:, message:)
+      def unauthorized_result(errors:, message:)
         Rails.logger.info("User is not authorized for this action: #{message}")
         Services::Result.new(
           success?: false,

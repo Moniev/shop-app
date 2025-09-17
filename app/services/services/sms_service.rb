@@ -16,6 +16,8 @@ module Services
   # two-factor authentication (2FA) codes to users via their phone numbers.
   # It handles Twilio client initialization and error logging for failed attempts.
   class SmsService
+    extend Concerns::Handlers
+
     class << self
       # Sends an SMS message to a specified recipient.
       #
@@ -26,23 +28,18 @@ module Services
       # @param body [String] The content of the SMS message.
       # @return [Services::Result]
       def dial(to:, body:)
-        return false if to.blank? || body.blank?
+        with_twilio_error_handling do
+          return false if to.blank? || body.blank?
+          return false unless twilio_available?
 
-        return false unless twilio_available?
-
-        msg = client.messages.create(
-          from: from_number,
-          to: to,
-          body: body
-        )
-        Rails.logger.info("SMS sent successfully. SID=#{msg.sid}")
-        true
-      rescue Twilio::REST::TwilioError => e
-        Rails.logger.error("Twilio Error: Failed to send SMS: #{e.message}")
-        false
-      rescue StandardError => e
-        Rails.logger.error("Twilio Error: Failed to send SMS: #{e.message}")
-        false
+          msg = client.messages.create(
+            from: from_number,
+            to: to,
+            body: body
+          )
+          Rails.logger.info("SMS sent successfully. SID=#{msg.sid}")
+          true
+        end
       end
 
       # Sends a two-factor authentication (2FA) code via SMS to a user.

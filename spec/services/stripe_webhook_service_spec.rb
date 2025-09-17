@@ -105,7 +105,7 @@ RSpec.describe Services::StripeWebhookService, type: :service do
       end
 
       it 'logs the error' do
-        expect(Rails.logger).to receive(:error).with(/Error processing Stripe event/)
+        expect(Rails.logger).to receive(:error).with(/An unexpected error occurred: undefined method 'id' for an instance of Hash/)
         described_class.handle(event)
       end
 

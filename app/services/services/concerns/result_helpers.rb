@@ -3,12 +3,67 @@
 module Services
   module Concerns
     module ResultHelpers
+      def no_action_needed_result(message:)
+        Rails.logger.info "Webhook: #{message}"
+        Services::Result.new(
+          success?: true,
+          status: :ok,
+          message: message
+        )
+      end
+
+      def wrong_refund_status_result(refund:)
+        Services::Result.new(
+          success?: false,
+          errors: ["Cannot cancel refund with status: #{refund.status}"],
+          status: :unprocessable_content,
+          message: "Cannot cancel refund with status: #{refund.status}."
+        )
+      end
+
+      def internal_server_error_result(message:, errors:)
+        Rails.logger.error "Internal server error #{message}"
+        Services::Result.new(
+          success?: false,
+          errors: errors,
+          status: :internal_server_error,
+          message: message
+        )
+      end
+
+      def log_and_return_success_result(message)
+        Rails.logger.info "Webhook: #{message}"
+        Services::Result.new(
+          success?: true,
+          status: :ok,
+          message: message
+        )
+      end
+
       def user_not_found_result
         Services::Result.new(
           success?: false,
           errors: ['User not found.'],
           status: :not_found,
           message: 'User not found.'
+        )
+      end
+
+      def record_not_destoyed_error(exc:, record:)
+        Services::Result.new(
+          success?: false,
+          errors: record.errors.full_messages,
+          status: :not_modified,
+          message: exc.message
+        )
+      end
+
+      def not_found_result(errors:, message:)
+        Services::Result.new(
+          success?: false,
+          errors: errors,
+          status: :not_found,
+          message: message
         )
       end
 
@@ -41,7 +96,7 @@ module Services
       end
 
       def unknown_error_result(exc)
-        Rails.logger.error("An unexpected error occurred: #{exc.message}")
+        Rails.logger.error("An unexpected error occurred: #{exc.message || 'unknownerror'}")
         Services::Result.new(
           success?: false,
           errors: ['Unknown error has occured during the operation'],

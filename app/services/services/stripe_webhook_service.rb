@@ -18,8 +18,6 @@ module Services
       Services::Result.new(success?: false, status: :internal_server_error, message: 'Webhook processing failed.')
     end
 
-    private
-
     def self.handle_payment_intent_succeeded(payment_intent)
       order = Order.find_by(stripe_payment_intent_id: payment_intent.id)
 

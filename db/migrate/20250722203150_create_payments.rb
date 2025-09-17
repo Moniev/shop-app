@@ -10,6 +10,7 @@ class CreatePayments < ActiveRecord::Migration[8.0]
       t.string :currency, null: false
       t.text :error_message
       t.timestamps
+
       t.index :transaction_id, unique: true
     end
   end

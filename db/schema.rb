@@ -154,7 +154,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_23_100617) do
     t.integer "payment_status", default: 0
     t.datetime "order_date", null: false
     t.integer "package_carrier"
-    t.text "tracking_id"
+    t.text "transaction_id"
     t.string "package_type"
     t.text "notes"
     t.integer "shipping_service_id"

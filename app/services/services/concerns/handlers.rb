@@ -3,6 +3,12 @@
 module Services
   module Concerns
     module Handlers
+      def with_redis_error_handling
+        yield
+      rescue Redis::CannotConnectError => e
+        Rails.logger.error("Redis error falling back to DB: #{e.message}")
+      end
+
       def with_error_handling(_ = nil)
         yield
       rescue ActiveRecord::RecordNotFound

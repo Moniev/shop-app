@@ -86,7 +86,7 @@ RSpec.describe Services::ProductUpdateService, type: :service do
       end
 
       it 'logs the error' do
-        expect(Rails.logger).to receive(:error).with("Product update failed for ID #{product.id}: Cache is down")
+        expect(Rails.logger).to receive(:error).with('An unexpected error occurred: Cache is down')
         described_class.call(product, valid_params)
       end
 

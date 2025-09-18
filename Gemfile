@@ -42,7 +42,8 @@ group :development, :test do
   gem 'rswag-api'
   gem 'rswag-ui'
   gem 'rubocop', '~> 1.76'
-  gem 'ruby-lsp'
+  gem 'ruby-lsp', require: false
+  gem 'ruby-lsp-rspec', require: false
 end
 
 group :test do

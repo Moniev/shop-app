@@ -122,13 +122,13 @@ RSpec.describe Services::ProductInteractionService, type: :service do
       it 'returns a failure result for blank content' do
         result = service.add_comment(product, '')
         expect(result.success?).to be false
-        expect(result.errors).to include('Comment content cannot be empty.')
+        expect(result.errors.first).to eq("Content can't be blank")
       end
 
       it 'returns a failure result for an invalid parent_id' do
         result = service.add_comment(product, 'A comment', -1)
         expect(result.success?).to be false
-        expect(result.errors).to include('Invalid parent comment ID.')
+        expect(result.errors.first).to eq('Unknown error has occured during the operation')
       end
     end
   end

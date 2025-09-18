@@ -9,42 +9,19 @@
 # payment processing, or external API interactions
 module Services
   class ProductDeletionService
+    extend Concerns::ResultHelpers
+    extend Concerns::Handlers
+
     def self.call(product)
-      unless product
-        Services::Result.new(
-          success?: false,
-          errors: ['No such product'],
-          status: :not_modified,
-          message: 'Product deletion failed.'
-        )
-      end
-      begin
+      with_error_not_destroyed_handling do
+        return not_found_result(errors: ['No such product'], message: 'Product deletion failed') unless product
+
         ActiveRecord::Base.transaction do
           product.destroy!
 
           Services::ProductCachingService.invalidate_index_pages
         end
-        Services::Result.new(
-          success?: true,
-          status: :no_content,
-          message: 'Product deleted successfully.'
-        )
-      rescue ActiveRecord::RecordNotDestroyed => e
-        Rails.logger.error("Product deletion failed for ID #{product.id}: #{e.message}")
-        Services::Result.new(
-          success?: false,
-          errors: product.errors.full_messages,
-          status: :unprocessable_content,
-          message: 'Product deletion failed.'
-        )
-      rescue StandardError => e
-        Rails.logger.error("Unexpected error during product deletion for ID #{product.id}: #{e.message}")
-        Services::Result.new(
-          success?: false,
-          errors: ['An unexpected error occurred during product deletion.'],
-          status: :internal_server_error,
-          message: 'An unexpected error occurred.'
-        )
+        destroy_success_result(message: 'Product deleted successfully')
       end
     end
   end

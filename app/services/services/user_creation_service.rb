@@ -13,13 +13,8 @@ module Services
     extend Concerns::Handlers
 
     def self.call(user_params)
-      if User.exists?(mail: user_params[:mail])
-        return conflict_result(errors: ['User with this email already exists'], message: 'User registration failed')
-      end
-
-      if user_params[:phone].present? && User.exists?(phone: user_params[:phone])
-        return conflict_result(errors: ['User with this phone already exists'], message: 'User registration failed')
-      end
+      conflict = check_user_params(user_params: user_params)
+      return conflict if conflict
 
       with_error_handling do
         ActiveRecord::Base.transaction do
@@ -30,6 +25,16 @@ module Services
                          status: :created)
         end
       end
+    end
+
+    def self.check_user_params(user_params:)
+      if User.exists?(mail: user_params[:mail])
+        return conflict_result(errors: ['User with this email already exists'], message: 'User registration failed')
+      end
+
+      return unless user_params[:phone].present? && User.exists?(phone: user_params[:phone])
+
+      conflict_result(errors: ['User with this phone already exists'], message: 'User registration failed')
     end
   end
 end

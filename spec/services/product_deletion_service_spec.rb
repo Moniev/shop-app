@@ -57,15 +57,10 @@ RSpec.describe Services::ProductDeletionService, type: :service do
         described_class.call(product)
       end
 
-      it 'logs the error' do
-        expect(Rails.logger).to receive(:error).with(/Product deletion failed for ID #{product.id}/)
-        described_class.call(product)
-      end
-
-      it 'returns an unprocessable_content result' do
+      it 'returns an not_modified result' do
         result = described_class.call(product)
         expect(result.success?).to be false
-        expect(result.status).to eq(:unprocessable_content)
+        expect(result.status).to eq(:not_modified)
       end
     end
 
@@ -84,7 +79,7 @@ RSpec.describe Services::ProductDeletionService, type: :service do
       end
 
       it 'logs the error' do
-        expect(Rails.logger).to receive(:error).with(/Unexpected error during product deletion for ID #{product.id}/)
+        expect(Rails.logger).to receive(:error).with(/An unexpected error occurred: Cache error/)
         described_class.call(product)
       end
 

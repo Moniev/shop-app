@@ -49,7 +49,7 @@ module Services
         )
       end
 
-      def record_not_destoyed_error(exc:, record:)
+      def record_not_destroyed_error_result(exc:, record:)
         Services::Result.new(
           success?: false,
           errors: record.errors.full_messages,
@@ -63,6 +63,15 @@ module Services
           success?: false,
           errors: errors,
           status: :not_found,
+          message: message
+        )
+      end
+
+      def forbidden_result(errors:, message:)
+        Services::Result.new(
+          success?: false,
+          errors: errors,
+          status: :forbidden,
           message: message
         )
       end
@@ -135,10 +144,19 @@ module Services
         )
       end
 
+      def unprocessable_content_with_errors_result(errors:, message:)
+        Services::Result.new(
+          success?: false,
+          errors: errors,
+          status: :unprocessable_content,
+          message: message
+        )
+      end
+
       def destroy_success_result(message:)
         Rails.logger.info("Record destroyed: #{message}")
         Services::Result.new(
-          success?: false,
+          success?: true,
           status: :no_content,
           message: message
         )

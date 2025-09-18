@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class User < ApplicationRecord
-  enum :role, %w[regular moderator admin entrepreneur], default: :regular
+  enum :role, { regular: 0, moderator: 1, admin: 2, entrepreneur: 3 }, default: :regular
   alias user? regular?
   has_secure_password
 
@@ -65,14 +65,6 @@ class User < ApplicationRecord
 
   def two_factor_enabled?
     user_settings&.two_factor
-  end
-
-  def admin?
-    role == 'admin'
-  end
-
-  def moderator?
-    role == 'moderator'
   end
 
   def phone_changed_and_present?

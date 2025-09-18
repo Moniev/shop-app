@@ -18,7 +18,7 @@ module Services
       rescue ActiveRecord::RecordNotFound
         not_found_result(errors: ['Record hasnt been found'], message: 'Failed to find such record')
       rescue ActiveRecord::RecordNotDestroyed => e
-        record_not_destroyed_result(e, e.record)
+        record_not_destroyed_error_result(exc: e, record: e.record)
       rescue ActiveRecord::RecordInvalid => e
         invalid_record_result(e)
       rescue StandardError => e
@@ -55,12 +55,6 @@ module Services
       rescue StandardError => e
         Rails.logger.error("Twilio Error: Failed to send SMS: #{e.message}")
         false
-      end
-
-      def and_then
-        return self unless success?
-
-        yield(data)
       end
     end
   end

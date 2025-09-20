@@ -9,48 +9,89 @@
 # payment processing, or external API interactions
 module Services
   class ProductCachingService
+    extend Concerns::Handlers
+    extend Concerns::ResultHelpers
+
     INDEX_KEY_PREFIX = 'products:page'
+    SHOW_KEY_PREFIX = 'product'
     VERSION_KEY = 'products:version'
+    CACHE_EXPIRATION = 1.hour
 
     def self.fetch_all(page = 1)
-      cache_key = index_cache_key(page)
-      Rails.cache.fetch(cache_key, expires_in: 1.hour) do
-        Product.with_details.includes(:product_photos, :product_likes, :comments)
-               .page(page).per(25).to_a
-      end
-    rescue Redis::CannotConnectError => e
-      Rails.logger.error("Redis error in fetch_all, falling back to DB: #{e.message}")
-      Product.with_details.includes(:product_photos, :product_likes, :comments)
-             .page(page).per(25).to_a
+      perform_caching_flow(
+        cache_key_proc: -> { index_cache_key(page) },
+        db_query_proc: -> { db_query_for_all(page) },
+        result_key: :products,
+        success_message: 'Products have been found',
+        failure_message: 'No products found',
+        errors: ['Products not found']
+      )
     end
 
     def self.fetch_one(id)
-      Rails.cache.fetch("product:#{id}", expires_in: 1.hour) do
-        Product.with_details.includes(:product_photos, :product_likes, :comments).find_by(id: id)
+      perform_caching_flow(
+        cache_key_proc: -> { show_cache_key(id) },
+        db_query_proc: -> { db_query_for_one(id) },
+        result_key: :product,
+        success_message: 'Product has been found',
+        failure_message: 'Product not found',
+        errors: ['Product not found']
+      )
+    end
+
+    def self.perform_caching_flow(cache_key_proc:, db_query_proc:, result_key:, success_message:, errors:,
+                                  failure_message:)
+      db_fallback = db_query_proc
+
+      data = with_redis_fallback(db_fallback) do
+        Rails.cache.fetch(cache_key_proc.call, expires_in: CACHE_EXPIRATION) do
+          db_fallback.call
+        end
       end
-    rescue Redis::CannotConnectError => e
-      Rails.logger.error("Redis error in fetch_one, falling back to DB: #{e.message}")
-      Product.with_details.includes(:product_photos, :product_likes, :comments).find_by(id: id)
+
+      if data.present?
+        success_result(data: { result_key => data }, message: success_message)
+
+      else
+        not_found_result(errors: errors, message: failure_message)
+      end
     end
 
     def self.invalidate_for_product(product)
-      Rails.cache.delete("product:#{product.id}")
-      invalidate_index_pages
-    end
-
-    def self.invalidate_index_pages
-      Rails.cache.delete_matched("#{INDEX_KEY_PREFIX}:*")
-    rescue Redis::CannotConnectError => e
-      Rails.logger.error("Redis error in invalidate_index_pages: #{e.message}")
+      with_redis_fallback(-> {}) do
+        Rails.cache.delete(show_cache_key(product.id))
+        increment_version
+      end
     end
 
     private
 
-    def self.index_cache_key(page)
-      version = Rails.cache.fetch(VERSION_KEY) { 1 }
-      "#{INDEX_KEY_PREFIX}:#{page}:#{version}"
+    def self.base_query
+      Product.with_details.includes(:product_photos, :product_likes, :comments)
     end
 
-    private_class_method :index_cache_key
+    def self.db_query_for_all(page)
+      base_query.page(page).per(25).to_a
+    end
+
+    def self.db_query_for_one(id)
+      base_query.find_by(id: id)
+    end
+
+    def self.index_cache_key(page)
+      version = Rails.cache.fetch(VERSION_KEY) { 1 }
+      "#{INDEX_KEY_PREFIX}:#{page}:v#{version}"
+    end
+
+    def self.show_cache_key(id)
+      "#{SHOW_KEY_PREFIX}:#{id}"
+    end
+
+    def self.increment_version
+      Rails.cache.increment(VERSION_KEY)
+    end
+
+    private_class_method :index_cache_key, :show_cache_key, :increment_version, :index_cache_key, :db_query_for_one,
+                         :base_query, :db_query_for_all
   end
 end

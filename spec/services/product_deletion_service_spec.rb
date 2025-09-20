@@ -13,7 +13,7 @@ RSpec.describe Services::ProductDeletionService, type: :service do
     allow(ProductObserver.instance).to receive(:after_destroy)
 
     stub_const('Services::ProductCachingService', caching_service)
-    allow(caching_service).to receive(:invalidate_index_pages)
+    allow(caching_service).to receive(:invalidate_for_product)
   end
 
   describe '.call' do
@@ -27,7 +27,7 @@ RSpec.describe Services::ProductDeletionService, type: :service do
       end
 
       it 'invalidates the index pages cache' do
-        expect(caching_service).to receive(:invalidate_index_pages)
+        expect(caching_service).to receive(:invalidate_for_product)
         described_class.call(product)
       end
 
@@ -53,7 +53,7 @@ RSpec.describe Services::ProductDeletionService, type: :service do
       end
 
       it 'does not invalidate the cache' do
-        expect(caching_service).not_to receive(:invalidate_index_pages)
+        expect(caching_service).not_to receive(:invalidate_for_product)
         described_class.call(product)
       end
 
@@ -68,7 +68,7 @@ RSpec.describe Services::ProductDeletionService, type: :service do
       let!(:product) { create(:product) }
 
       before do
-        allow(caching_service).to receive(:invalidate_index_pages).and_raise(StandardError, 'Cache error')
+        allow(caching_service).to receive(:invalidate_for_product).and_raise(StandardError, 'Cache error')
         allow(Rails.logger).to receive(:error)
       end
 

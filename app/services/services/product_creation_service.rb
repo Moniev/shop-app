@@ -9,37 +9,19 @@
 # payment processing, or external API interactions
 module Services
   class ProductCreationService
-    def self.call(params)
-      product = Product.new(params.except(:product_photo_ids))
+    extend Concerns::Handlers
+    extend Concerns::ResultHelpers
 
-      begin
+    def self.call(params)
+      with_error_handling do
+        product = Product.new(params.except(:product_photo_ids))
         ActiveRecord::Base.transaction do
           product.save!
           ProductManagementService.assign_photos(product: product, photo_ids: params[:product_photo_ids])
 
-          ProductCachingService.invalidate_index_pages
+          ProductCachingService.invalidate_for_product(product) if product.present?
         end
-        Services::Result.new(
-          success?: true,
-          data: { product: product },
-          status: :created,
-          message: 'Product created successfully.'
-        )
-      rescue ActiveRecord::RecordInvalid
-        Services::Result.new(
-          success?: false,
-          errors: product.errors.full_messages,
-          status: :unprocessable_content,
-          message: 'Product creation failed due to validation errors.'
-        )
-      rescue StandardError => e
-        Rails.logger.error("Product creation failed: #{e.message}")
-        Services::Result.new(
-          success?: false,
-          errors: ['An unexpected error occurred during product creation.'],
-          status: :internal_server_error,
-          message: 'An unexpected error occurred.'
-        )
+        success_result(data: { product: product }, message: 'Product created successfully', status: :created)
       end
     end
   end

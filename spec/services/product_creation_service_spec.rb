@@ -18,7 +18,7 @@ RSpec.describe Services::ProductCreationService, type: :service do
     stub_const('Services::ProductManagementService', management_service)
     stub_const('Services::ProductCachingService', caching_service)
     allow(management_service).to receive(:assign_photos)
-    allow(caching_service).to receive(:invalidate_index_pages)
+    allow(caching_service).to receive(:invalidate_for_product)
   end
 
   describe '.call' do
@@ -38,7 +38,7 @@ RSpec.describe Services::ProductCreationService, type: :service do
       end
 
       it 'calls the ProductCachingService to invalidate the cache' do
-        expect(caching_service).to receive(:invalidate_index_pages)
+        expect(caching_service).to receive(:invalidate_for_product)
         described_class.call(valid_params)
       end
 
@@ -62,7 +62,7 @@ RSpec.describe Services::ProductCreationService, type: :service do
 
       it 'does not call the downstream services' do
         expect(management_service).not_to receive(:assign_photos)
-        expect(caching_service).not_to receive(:invalidate_index_pages)
+        expect(caching_service).not_to receive(:invalidate_for_product)
         described_class.call(invalid_params)
       end
 
@@ -87,7 +87,7 @@ RSpec.describe Services::ProductCreationService, type: :service do
       end
 
       it 'logs the error' do
-        expect(Rails.logger).to receive(:error).with('Product creation failed: Something went wrong')
+        expect(Rails.logger).to receive(:error).with('An unexpected error occurred: Something went wrong')
         described_class.call(valid_params)
       end
 
@@ -95,7 +95,7 @@ RSpec.describe Services::ProductCreationService, type: :service do
         result = described_class.call(valid_params)
         expect(result.success?).to be false
         expect(result.status).to eq(:internal_server_error)
-        expect(result.errors).to include('An unexpected error occurred during product creation.')
+        expect(result.errors.first).to eq('Unknown error has occured during the operation')
       end
     end
   end

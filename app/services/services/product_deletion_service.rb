@@ -19,7 +19,7 @@ module Services
         ActiveRecord::Base.transaction do
           product.destroy!
 
-          Services::ProductCachingService.invalidate_index_pages
+          Services::ProductCachingService.invalidate_for_product(product)
         end
         destroy_success_result(message: 'Product deleted successfully')
       end

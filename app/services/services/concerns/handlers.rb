@@ -9,6 +9,13 @@ module Services
         Rails.logger.error("Redis error falling back to DB: #{e.message}")
       end
 
+      def with_redis_fallback(fallback)
+        yield
+      rescue Redis::CannotConnectError => e
+        Rails.logger.error("Redis error, falling back to DB: #{e.message}")
+        fallback.call
+      end
+
       def with_error_handling(_ = nil)
         yield
       rescue ActiveRecord::RecordNotFound

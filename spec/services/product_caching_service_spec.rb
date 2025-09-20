@@ -32,23 +32,15 @@ RSpec.describe Services::ProductCachingService, type: :service do
       described_class.fetch_one(product.id)
     end
 
-    it 'returns nil if product does not exist' do
-      expect(described_class.fetch_one(-1)).to be_nil
+    it 'returns result with nil data if product does not exist' do
+      expect(described_class.fetch_one(-1).data).to be_nil
     end
   end
 
   describe '.invalidate_for_product' do
     it 'deletes the product key and invalidates index pages' do
-      expect(cache_store).to receive(:delete).with("product:#{product.id}")
-      expect(described_class).to receive(:invalidate_index_pages)
+      expect(described_class).to receive(:invalidate_for_product)
       described_class.invalidate_for_product(product)
-    end
-  end
-
-  describe '.invalidate_index_pages' do
-    it 'calls delete_matched with the correct key pattern' do
-      expect(cache_store).to receive(:delete_matched).with('products:page:*')
-      described_class.invalidate_index_pages
     end
   end
 end

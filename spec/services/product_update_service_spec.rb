@@ -19,7 +19,6 @@ RSpec.describe Services::ProductUpdateService, type: :service do
     stub_const('Services::ProductCachingService', caching_service)
     allow(management_service).to receive(:assign_photos)
     allow(caching_service).to receive(:invalidate_for_product)
-    allow(caching_service).to receive(:invalidate_index_pages)
   end
 
   describe '.call' do
@@ -37,7 +36,6 @@ RSpec.describe Services::ProductUpdateService, type: :service do
 
       it 'calls the ProductCachingService to invalidate caches' do
         expect(caching_service).to receive(:invalidate_for_product).with(product)
-        expect(caching_service).to receive(:invalidate_index_pages)
         described_class.call(product, valid_params)
       end
 
@@ -61,7 +59,6 @@ RSpec.describe Services::ProductUpdateService, type: :service do
       it 'does not call the downstream services' do
         expect(management_service).not_to receive(:assign_photos)
         expect(caching_service).not_to receive(:invalidate_for_product)
-        expect(caching_service).not_to receive(:invalidate_index_pages)
         described_class.call(product, invalid_params)
       end
 
@@ -75,7 +72,7 @@ RSpec.describe Services::ProductUpdateService, type: :service do
 
     context 'when a downstream service raises an error' do
       before do
-        allow(caching_service).to receive(:invalidate_index_pages).and_raise(StandardError, 'Cache is down')
+        allow(caching_service).to receive(:invalidate_for_product).and_raise(StandardError, 'Cache is down')
         allow(Rails.logger).to receive(:error)
       end
 

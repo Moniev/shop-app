@@ -20,7 +20,6 @@ module Services
           ProductManagementService.assign_photos(product: product, photo_ids: params[:product_photo_ids])
 
           ProductCachingService.invalidate_for_product(product)
-          ProductCachingService.invalidate_index_pages
         end
         success_result(data: { product: product }, message: 'Product updated successfully')
       end

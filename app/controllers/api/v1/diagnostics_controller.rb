@@ -62,7 +62,7 @@ module Api
 
       def bind_data_and_render(result)
         bind_data(result)
-        render '_probe_result', status: @status
+        render :_probe_result, status: @status
       end
     end
   end

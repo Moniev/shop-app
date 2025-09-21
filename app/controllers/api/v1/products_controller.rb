@@ -50,7 +50,7 @@ module Api
       # @see Services::ProductCreationService.call
       def create
         result = Services::ProductCreationService.call(product_params)
-        bind_data_and_render(result, 'show')
+        bind_data_and_render(result, :show)
       end
 
       # PATCH/PUT /api/v1/products/:id
@@ -62,7 +62,7 @@ module Api
       # @see Services::ProductUpdateService.call
       def update
         result = Services::ProductUpdateService.call(@product, product_params)
-        bind_data_and_render(result, 'show')
+        bind_data_and_render(result, :show)
       end
 
       # DELETE /api/v1/products/:id
@@ -87,7 +87,7 @@ module Api
       # @see Services::ProductInteractionService#like
       def like
         result = product_interaction_service.like(@product)
-        bind_data_and_render(result, 'show')
+        bind_data_and_render(result, :show)
       end
 
       # POST /api/v1/products/:id/rate
@@ -99,7 +99,7 @@ module Api
       # @see Services::ProductInteractionService#rate
       def rate
         result = product_interaction_service.rate(@product, rate_params[:rating], rate_params[:comment])
-        bind_data_and_render(result, 'show')
+        bind_data_and_render(result, :show)
       end
 
       # POST /api/v1/products/:id/comment
@@ -111,22 +111,22 @@ module Api
       # @see Services::ProductInteractionService#add_comment
       def comment
         result = product_interaction_service.add_comment(@product, comment_params[:content], comment_params[:parent_id])
-        bind_data_and_render(result, 'show')
+        bind_data_and_render(result, :show)
       end
 
       def available_categories
         @categories = Category.order(:name)
-        bind_data_and_render(result, 'show')
+        bind_data_and_render(result, :show)
       end
 
       def create_category
         result = Services::CategoryManagementService.create(category_params)
-        bind_data_and_render(result, 'show')
+        bind_data_and_render(result, :show)
       end
 
       def update_category
         result = Services::CategoryManagementService.update(@category, category_params)
-        bind_data_and_render(result, 'show')
+        bind_data_and_render(result, :show)
       end
 
       def destroy_category
@@ -168,7 +168,7 @@ module Api
       def handle_show_response(product)
         if product
           @product = product
-          bind_data_and_render(nil, 'show')
+          bind_data_and_render(nil, :show)
         else
           render json: { errors: ['Product not found.'] }, status: :not_found
         end
@@ -204,7 +204,7 @@ module Api
       # @return [ActionController::Parameters] Permitted parameters.
       def product_params
         params.require(:product).permit(
-          :name, :price, :description,
+          :name, :price, :description, :vat_rate,
           product_photos_attributes: %i[id _destroy],
           product_photo_ids: []
         )

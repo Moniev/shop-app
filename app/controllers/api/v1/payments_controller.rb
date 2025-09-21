@@ -22,7 +22,7 @@ module Api
       #   `index.json.jbuilder` with a status of `:ok` (200).
       def index
         @payments = Payment.includes(:order).order(created_at: :desc)
-        bind_data_and_render(nil, 'index')
+        bind_data_and_render(nil, :index)
       end
 
       # GET /api/v1/payments/:id
@@ -36,7 +36,7 @@ module Api
       # @return [void] Implicitly renders the `@payment` using `show.json.jbuilder` with a
       #   status of `:ok` (200).
       def show
-        bind_data_and_render(nil, 'show')
+        bind_data_and_render(nil, :show)
       end
 
       # POST /api/v1/payments
@@ -55,7 +55,7 @@ module Api
           order_id: payment_params[:order_id]
         )
 
-        bind_data_and_render(result, 'show')
+        bind_data_and_render(result, :show)
       end
 
       private

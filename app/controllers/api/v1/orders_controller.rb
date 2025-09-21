@@ -25,7 +25,7 @@ module Api
       #   `index.json.jbuilder` with a status of `:ok` (200).
       def index
         @orders = Order.accessible_by(current_ability).includes(:user, :items).order(created_at: :desc)
-        bind_data_and_render(nil, 'index')
+        bind_data_and_render(nil, :index)
       end
 
       # GET /api/v1/orders/me
@@ -38,7 +38,7 @@ module Api
       #   `me.json.jbuilder` with a status of `:ok` (200).
       def me
         @orders = current_user.orders.includes(:items).order(created_at: :desc)
-        bind_data_and_render(nil, 'index')
+        bind_data_and_render(nil, :index)
       end
 
       # GET /api/v1/orders/:id
@@ -51,7 +51,7 @@ module Api
       # @return [void] Implicitly renders the `@order` using `show.json.jbuilder` with a
       #   status of `:ok` (200).
       def show
-        bind_data_and_render(nil, 'show')
+        bind_data_and_render(nil, :show)
       end
 
       # POST /api/v1/orders
@@ -72,7 +72,7 @@ module Api
           package_carrier: order_params[:package_carrier],
           location_id: order_params[:location_id]
         )
-        bind_data_and_render(result, 'show')
+        bind_data_and_render(result, :show)
       end
 
       # PATCH/PUT /api/v1/orders/:id
@@ -89,29 +89,29 @@ module Api
       # @see Services::OrderManagementService#update
       def update
         result = order_management_service.update(update_order_params)
-        bind_data_and_render(result, 'show')
+        bind_data_and_render(result, :show)
       end
 
       def add_product
         quantity = add_product_params[:quantity].to_i
         result = order_management_service.add_product(@product, quantity)
-        bind_data_and_render(result, 'show')
+        bind_data_and_render(result, :show)
       end
 
       def remove_product
         quantity = remove_product_params[:quantity]
         result = order_management_service.remove_product(@product, quantity)
-        bind_data_and_render(result, 'show')
+        bind_data_and_render(result, :show)
       end
 
       def mark_order_status
         result = order_management_service.mark_order_status(order_status_params[:status])
-        bind_data_and_render(result, 'show')
+        bind_data_and_render(result, :show)
       end
 
       def mark_payment_status
         result = order_management_service.mark_payment_status(payment_status_params[:payment_status])
-        bind_data_and_render(result, 'show')
+        bind_data_and_render(result, :show)
       end
 
       # POST /api/v1/orders/:id/cancel
@@ -124,7 +124,7 @@ module Api
       # @see Services::OrderManagementService#cancel
       def cancel
         result = order_management_service.cancel
-        bind_data_and_render(result, 'show')
+        bind_data_and_render(result, :show)
       end
 
       # DELETE /api/v1/orders/:id

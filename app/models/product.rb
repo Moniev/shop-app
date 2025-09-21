@@ -9,6 +9,7 @@ class Product < ApplicationRecord
   has_many :product_categories, dependent: :destroy
   has_many :categories, through: :product_categories
 
+  has_many :invoice_items
   accepts_nested_attributes_for :product_photos, allow_destroy: true
   validates :name, presence: true
 

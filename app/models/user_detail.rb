@@ -32,4 +32,8 @@ class UserDetail < ApplicationRecord
       { errors: entrepreneur.errors.full_messages, status: :unprocessable_entity }
     end
   end
+
+  def full_name
+    "#{first_name} #{last_name}"
+  end
 end

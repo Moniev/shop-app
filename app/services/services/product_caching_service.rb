@@ -41,11 +41,9 @@ module Services
 
     def self.perform_caching_flow(cache_key_proc:, db_query_proc:, result_key:, success_message:, errors:,
                                   failure_message:)
-      db_fallback = db_query_proc
-
-      data = with_redis_fallback(db_fallback) do
+      data = with_redis_fallback(db_query_proc) do
         Rails.cache.fetch(cache_key_proc.call, expires_in: CACHE_EXPIRATION) do
-          db_fallback.call
+          db_query_proc.call
         end
       end
 

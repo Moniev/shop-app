@@ -29,10 +29,10 @@ module Api
 
     def handle_exceptions
       yield
-    rescue CanCan::AccessDenied => e
-      render json: { error: 'Not Authorized', message: e.message }, status: :forbidden
-    rescue Api::ApplicationController::Forbidden => e
-      render json: { errors: [e.message], message: 'Access denied.' }, status: :forbidden
+    rescue CanCan::AccessDenied
+      render json: { errors: ['Not Authorized'], message: 'Access denied' }, status: :forbidden
+    rescue Api::ApplicationController::Forbidden
+      render json: { errors: ['Not Authorized'], message: 'Access denied.' }, status: :forbidden
     rescue Stripe::SignatureVerificationError => e
       render json: { errors: [e.message], message: 'Stripe signature verification failed.' }, status: :bad_request
     rescue ActiveRecord::RecordNotFound => e

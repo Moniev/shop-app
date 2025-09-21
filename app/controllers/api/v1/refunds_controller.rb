@@ -41,16 +41,20 @@ module Api
       end
 
       def cancel
-        result = Services::RefundManagementService.new(@refund).cancel
+        result = refund_management_service.cancel
         bind_data_and_render(result, :cancel)
       end
 
       def complete
-        result = Services::RefundManagementService.new(@refund).complete
+        result = refund_management_service.complete
         bind_data_and_render(result, :complete)
       end
 
       private
+
+      def refund_management_service
+        Services::RefundManagementService.new(@refund)
+      end
 
       def update_refund_params
         params.require(:refund).permit(:status, :reason, :description)

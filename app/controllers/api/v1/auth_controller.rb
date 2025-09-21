@@ -34,7 +34,7 @@ module Api
       # @see Services::AuthenticationService.login
       def login
         result = Services::AuthenticationService.login(params[:mail], params[:password])
-        bind_data_and_render(result, 'login')
+        bind_data_and_render(result, :login)
       end
 
       # POST /api/v1/auth/verify_2fa
@@ -49,7 +49,7 @@ module Api
       # @see Services::AuthenticationService.verify_2fa
       def verify_2fa
         result = Services::AuthenticationService.verify_2fa(@user, params[:second_factor_code])
-        bind_data_and_render(result, 'verify_2fa', user: @user)
+        bind_data_and_render(result, :verify_2fa, user: @user)
       end
 
       # PATCH /api/v1/auth/activate
@@ -64,7 +64,7 @@ module Api
       # @see Services::AccountManagementService.activate
       def activate
         result = Services::UserManagementService.activate(@user, params[:activation_code])
-        bind_data_and_render(result, 'activate', user: @user)
+        bind_data_and_render(result, :activate, user: @user)
       end
 
       # PATCH /api/v1/auth/verify
@@ -79,7 +79,7 @@ module Api
       # @see Services::AccountManagementService.verify
       def verify
         result = Services::UserManagementService.verify(@user, params[:verification_code])
-        bind_data_and_render(result, 'verify', user: @user)
+        bind_data_and_render(result, :verify, user: @user)
       end
 
       # POST /api/v1/auth/password/reset
@@ -93,7 +93,7 @@ module Api
       # @see Services::PasswordResetService.request
       def request_reset
         result = Services::PasswordResetService.request(params[:mail])
-        bind_data_and_render(result, 'request_reset')
+        bind_data_and_render(result, :request_reset)
       end
 
       # PATCH /api/v1/auth/password/reset
@@ -110,17 +110,17 @@ module Api
       def confirm_reset
         result = Services::PasswordResetService.reset(params[:reset_code], params[:password],
                                                       params[:password_confirmation])
-        bind_data_and_render(result, 'confirm_reset')
+        bind_data_and_render(result, :confirm_reset)
       end
 
       def blacklist_user
         result = Services::UserManagementService.blacklist_user(params[:user_id])
-        bind_data_and_render(result, 'blacklist_user')
+        bind_data_and_render(result, :blacklist_user)
       end
 
       def whitelist_user
         result = Services::UserManagementService.whitelist_user(params[:user_id])
-        bind_data_and_render(result, 'whitelist_user')
+        bind_data_and_render(result, :whitelist_user)
       end
 
       private

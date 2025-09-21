@@ -3,6 +3,15 @@
 module Services
   module Concerns
     module ResultHelpers
+      def stripe_error_result(exc)
+        Services::Result.new(
+          success?: false,
+          errors: ['Could not connect to the payment provider. Please try again later.'],
+          status: :service_unavailable,
+          message: exc.message
+        )
+      end
+
       def no_action_needed_result(message:)
         Rails.logger.info "Webhook: #{message}"
         Services::Result.new(

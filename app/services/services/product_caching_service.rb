@@ -51,7 +51,6 @@ module Services
 
       if data.present?
         success_result(data: { result_key => data }, message: success_message)
-
       else
         not_found_result(errors: errors, message: failure_message)
       end

@@ -16,6 +16,18 @@ module Services
         fallback.call
       end
 
+      def with_stripe_error_handling
+        yield
+      rescue Stripe::StripeError => e
+        stripe_error_result(e)
+      rescue ActiveRecord::RecordNotFound
+        user_not_found_result
+      rescue ActiveRecord::RecordInvalid => e
+        invalid_record_result(e)
+      rescue StandardError => e
+        unknown_error_result(e)
+      end
+
       def with_error_handling(_ = nil)
         yield
       rescue ActiveRecord::RecordNotFound

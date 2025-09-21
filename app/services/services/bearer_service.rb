@@ -14,8 +14,12 @@ module Services
   # including setting their lifetime, interacting with Redis for token status
   # (active/blacklisted), and handling JWT-related errors.
   class BearerService
+    extend Concerns::ResultHelpers
+    extend Concerns::Handlers
+
     SECRET_KEY = Rails.application.credentials.secret_key_base
     TOKEN_LIFETIME = 24.hours.to_i
+    KEY_PREFIX = 'jwt_status:'
 
     def self.redis
       @redis ||= Redis.current
@@ -31,8 +35,7 @@ module Services
       token = JWT.encode(payload, SECRET_KEY, 'HS256')
 
       begin
-        redis_key = "jwt_status:#{token}"
-        redis.with { |conn| conn.set(redis_key, 'active', ex: TOKEN_LIFETIME) }
+        redis.with { |conn| conn.set(cache_key(token), 'active', ex: TOKEN_LIFETIME) }
         Services::Result.new(
           success?: true,
           data: { token: token },
@@ -90,7 +93,6 @@ module Services
           message: 'Token could not be decoded for blacklisting.'
         )
       end
-
       decoded_payload = decoded_result.data[:payload]
       token_expires_at = Time.at(decoded_payload[:exp])
 
@@ -171,7 +173,9 @@ module Services
       end
     end
 
-    private
+    def self.cache_key(token)
+      "#{KEY_PREFIX}#{token}"
+    end
 
     # Decodes the JWT token payload.
     #

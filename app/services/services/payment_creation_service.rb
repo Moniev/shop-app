@@ -9,40 +9,52 @@
 # payment processing, or external API interactions
 module Services
   class PaymentCreationService
-    def self.call(user:, order_id:)
-      order = user.orders.find_by(id: order_id)
+    extend Concerns::Handlers
+    extend Concerns::ResultHelpers
 
-      return order_not_found_result unless order
-      return order_already_paid_result if order.payment_status_paid?
-
-      begin
-        payment_intent = find_or_create_payment_intent(order)
-
-        Services::Result.new(
-          success?: true,
-          data: { client_secret: payment_intent.client_secret },
-          status: :ok,
-          message: 'PaymentIntent created successfully.'
-        )
-      rescue Stripe::StripeError => e
-        Rails.logger.error("Stripe error for order #{order.id}: #{e.message}")
-        stripe_error_result(e)
-      rescue ActiveRecord::RecordInvalid => e
-        Rails.logger.error("Validation error for order #{order.id}: #{e.message}")
-        validation_error_result(e)
+    class << self
+      def call(user:, order_id:)
+        validate_and_find_order(user: user, order_id: order_id).then { |order| create_or_update_payment_intent(order) }
       end
-    end
 
-    private
+      def validate_and_find_order(user:, order_id:)
+        order = user.orders.find_by(id: order_id)
 
-    def self.find_or_create_payment_intent(order)
-      if order.stripe_payment_intent_id
+        unless order
+          return not_found_result(errors: ['Order not found or does not belong to the user.'],
+                                  message: 'Order not found or does not belong to the user.')
+        end
+
+        if order.payment_status_paid?
+          return unprocessable_content_with_errors_result(errors: ['This order has already been paid for.'],
+                                                          message: 'This order has already been paid for.')
+        end
+
+        success_result(data: order, message: 'order validated successfully')
+      end
+
+      def create_or_update_payment_intent(order)
+        with_stripe_error_handling do
+          payment_intent = if order.stripe_payment_intent_id
+                             update_payment_intent(order)
+                           else
+                             create_payment_intent!(order)
+                           end
+
+          success_result(data: { client_secret: payment_intent.client_secret },
+                         message: 'Payment intent created successfully.')
+        end
+      end
+
+      def update_payment_intent(order)
         Stripe::PaymentIntent.update(
           order.stripe_payment_intent_id,
           amount: order.total_in_cents,
           currency: 'pln'
         )
-      else
+      end
+
+      def create_payment_intent!(order)
         payment_intent = Stripe::PaymentIntent.create(
           amount: order.total_in_cents,
           currency: 'pln',
@@ -51,39 +63,6 @@ module Services
         order.update!(stripe_payment_intent_id: payment_intent.id)
         payment_intent
       end
-    end
-
-    def self.order_not_found_result
-      Services::Result.new(
-        success?: false,
-        errors: ['Order not found or does not belong to the user.'],
-        status: :not_found
-      )
-    end
-
-    def self.order_already_paid_result
-      Services::Result.new(
-        success?: false,
-        errors: ['This order has already been paid for.'],
-        status: :unprocessable_content
-      )
-    end
-
-    def self.stripe_error_result(error)
-      Services::Result.new(
-        success?: false,
-        errors: ['Could not connect to the payment provider. Please try again later.'],
-        status: :service_unavailable,
-        message: error.message
-      )
-    end
-
-    def self.validation_error_result(error)
-      Services::Result.new(
-        success?: false,
-        errors: error.record.errors.full_messages,
-        status: :unprocessable_content
-      )
     end
   end
 end

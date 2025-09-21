@@ -94,7 +94,7 @@ RSpec.describe Services::OrderCreationService, type: :service do
 
         expect(result.success?).to be false
         expect(result.status).to eq(:unprocessable_content)
-        expect(result.message).to include('validation errors')
+        expect(result.message).to include('Validation failed')
       end
     end
 
@@ -116,14 +116,14 @@ RSpec.describe Services::OrderCreationService, type: :service do
 
       it 'logs the error' do
         call_service
-        expect(Rails.logger).to have_received(:error).with("Order creation failed for user #{user.id}: #{error_message}")
+        expect(Rails.logger).to have_received(:error).with('An unexpected error occurred: Database connection lost')
       end
 
       it 'returns an internal server error result' do
         result = call_service
         expect(result.success?).to be false
         expect(result.status).to eq(:internal_server_error)
-        expect(result.errors).to include('An unexpected error occurred during order creation.')
+        expect(result.errors.first).to eq('Unknown error has occured during the operation')
       end
     end
   end

@@ -2,6 +2,7 @@
 
 class Location < ApplicationRecord
   belongs_to :user_detail, optional: true
+  belongs_to :invoice, optional: true
 
   validates :country, :province, :city, :postal_code, presence: true
   validates :building_number, numericality: { only_integer: true, greater_than: 0, allow_nil: true }

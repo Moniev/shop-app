@@ -18,6 +18,7 @@ class User < ApplicationRecord
   has_many :cart_items, -> { where(order_id: nil) }, class_name: 'Item', dependent: :destroy
   has_many :bans, foreign_key: :owner_id, dependent: :destroy
   has_many :refunds
+  has_many :invoices
 
   accepts_nested_attributes_for :user_detail
 

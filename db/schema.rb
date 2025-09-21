@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_23_100617) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_21_154526) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -117,6 +117,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_23_100617) do
     t.index ["krs"], name: "index_entrepreneur_details_on_krs", unique: true
     t.index ["nip"], name: "index_entrepreneur_details_on_nip", unique: true
     t.index ["user_detail_id"], name: "index_entrepreneur_details_on_user_detail_id", unique: true
+  end
+
+  create_table "invoices", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "location_id", null: false
+    t.bigint "payment_id", null: false
+    t.bigint "order_id", null: false
+    t.string "invoice_number", null: false
+    t.decimal "tax_rate", precision: 5, scale: 2, null: false
+    t.float "tax_value", null: false
+    t.float "total_gross", null: false
+    t.float "total_net", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["location_id"], name: "index_invoices_on_location_id"
+    t.index ["order_id"], name: "index_invoices_on_order_id"
+    t.index ["payment_id"], name: "index_invoices_on_payment_id"
+    t.index ["user_id"], name: "index_invoices_on_user_id"
   end
 
   create_table "items", force: :cascade do |t|
@@ -336,6 +354,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_23_100617) do
   add_foreign_key "comments", "products"
   add_foreign_key "comments", "users"
   add_foreign_key "entrepreneur_details", "user_details"
+  add_foreign_key "invoices", "locations"
+  add_foreign_key "invoices", "orders"
+  add_foreign_key "invoices", "payments"
+  add_foreign_key "invoices", "users"
   add_foreign_key "items", "orders"
   add_foreign_key "items", "products"
   add_foreign_key "items", "users"

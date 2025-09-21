@@ -9,6 +9,9 @@
 # payment processing, or external API interactions
 module Services
   class OrderCreationService
+    include Concerns::ResultHelpers
+    include Concerns::Handlers
+
     def self.call(user:, package_carrier:, location_id:, cart_item_ids: [])
       new(user: user, package_carrier: package_carrier, location_id: location_id, cart_item_ids: cart_item_ids).call
     end
@@ -22,7 +25,10 @@ module Services
 
     def call
       cart_items = find_cart_items
-      return handle_empty_cart if cart_items.empty?
+      if cart_items.empty?
+        return unprocessable_content_with_errors_result(errors: ['Your cart is empty or no items were selected.'],
+                                                        message: 'Your cart is empty or no items were selected.')
+      end
 
       user_location = find_user_location
       process_order_creation(cart_items, user_location)
@@ -31,29 +37,26 @@ module Services
     private
 
     def process_order_creation(cart_items, user_location)
-      order = nil
-      ActiveRecord::Base.transaction do
-        order_location = create_location_snapshot(user_location)
-        order = @user.orders.build(
-          package_carrier: @package_carrier,
-          location: order_location
-        )
-
-        order.items = cart_items
-        order.save!
-        Item.where(id: order.item_ids).update_all(user_id: nil)
+      with_error_handling do
+        order = nil
+        ActiveRecord::Base.transaction do
+          order = build_order(cart_items, user_location)
+        end
+        success_result(data: { order: order }, message: 'Order created successfully', status: :created)
       end
+    end
 
-      Services::Result.new(
-        success?: true,
-        data: { order: order },
-        status: :created,
-        message: 'Order created successfully.'
+    def build_order(cart_items, user_location)
+      order_location = create_location_snapshot(user_location)
+      order = @user.orders.build(
+        package_carrier: @package_carrier,
+        location: order_location
       )
-    rescue ActiveRecord::RecordInvalid => e
-      handle_validation_error(e, order)
-    rescue StandardError => e
-      handle_generic_error(e)
+
+      order.items = cart_items
+      order.save!
+      Item.where(id: order.item_ids).update_all(user_id: nil)
+      order
     end
 
     def create_location_snapshot(user_location)
@@ -71,44 +74,8 @@ module Services
       end
     end
 
-    def handle_empty_cart
-      Services::Result.new(
-        success?: false,
-        errors: ['Your cart is empty or no items were selected.'],
-        status: :unprocessable_content
-      )
-    end
-
     def find_user_location
       @user.user_detail&.locations&.find_by(id: @location_id)
-    end
-
-    def handle_invalid_location
-      Services::Result.new(
-        success?: false,
-        errors: ['Invalid shipping address selected.'],
-        status: :not_found
-      )
-    end
-
-    def handle_validation_error(exception, order)
-      errors = order&.errors&.full_messages || exception.message.split("\n")
-      Services::Result.new(
-        success?: false,
-        errors: errors,
-        status: :unprocessable_content,
-        message: 'Order creation failed due to validation errors.'
-      )
-    end
-
-    def handle_generic_error(exception)
-      Rails.logger.error("Order creation failed for user #{@user.id}: #{exception.message}")
-      Services::Result.new(
-        success?: false,
-        errors: ['An unexpected error occurred during order creation.'],
-        status: :internal_server_error,
-        message: 'An unexpected error occurred.'
-      )
     end
   end
 end

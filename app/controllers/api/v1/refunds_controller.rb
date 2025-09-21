@@ -3,35 +3,36 @@
 module Api
   module V1
     class RefundsController < Api::ApplicationController
-      before_action :set_order
-      before_action :set_refund, only: %i[update]
-      load_and_authorize_resource
+      load_and_authorize_resource :order, only: %i[create index]
+      load_and_authorize_resource :refund, through: :order, only: %i[create index]
+      load_and_authorize_resource :refund, except: %i[create index me]
 
       def create
         result = Services::RefundCreationService.call(
           user: current_user,
+          order: @order,
           refund_params: refund_params
         )
-        bind_data_and_render(result, 'show')
+        bind_data_and_render(result, :show)
       end
 
       def index
-        @refunds = Refund.accessible_by(current_ability).includes(:order).refund(created_at: :desc)
-        bind_data_and_render(nil, 'index')
+        @refunds = Refund.accessible_by(current_ability).includes(:order).order(created_at: :desc)
+        bind_data_and_render(nil, :index)
       end
 
       def show
-        bind_data_and_render(nil, 'show')
+        bind_data_and_render(nil, :show)
       end
 
       def me
-        @refunds = current_user.refunds.includes(:refunds).refund(created_at: :desc)
-        bind_data_and_render(nil, 'index')
+        @refunds = current_user.refunds.includes(:order).order(created_at: :desc)
+        bind_data_and_render(nil, :index)
       end
 
       def update
         result = Services::RefundUpdateService.call(@refund, update_refund_params)
-        bind_data_and_render(result, 'show')
+        bind_data_and_render(result, :show)
       end
 
       def destroy
@@ -39,41 +40,56 @@ module Api
         handle_destroy_response(result)
       end
 
+      def cancel
+        result = Services::RefundManagementService.new(@refund).cancel
+        bind_data_and_render(result, :cancel)
+      end
+
+      def complete
+        result = Services::RefundManagementService.new(@refund).complete
+        bind_data_and_render(result, :complete)
+      end
+
       private
 
       def update_refund_params
+        params.require(:refund).permit(:status, :reason, :description)
       end
 
       def refund_params
-        params.fetch(:refund, {}).permit(:status, :payment_status)
+        params.fetch(:refund).permit(:reason, :description)
       end
 
-      def set_order
-        @order = Order.find_by(id: params[:order_id])
-      end
-
-      def set_refund
-        @refund = Refund.find_by(id: params[:refund_id])
-      end
-
-      def bind_data_and_render(result, view_name)
+      def bind_data_and_render(result, view_name = nil)
         if result
           bind_data(result)
           if @success
-            if @data.key?(:refund)
-              @refund = data[:refund] if @data.key?(:refund)
-              @refunds = @data[:products] if @data.key?(:refunds) if @data.key?(:refunds)
+            @refund = @data[:refund] if @data.key?(:refund)
+            @refunds = @data[:refunds] if @data.key?(:refunds)
+
+            if view_name
+              render view_name, status: @status
+            else
+              render json: { message: @message }, status: @status
             end
+          else
+            render json: { errors: @errors }, status: @status
           end
         else
-
+          render view_name, status: :ok
         end
       end
 
-      def handle_error_reponse
+      def handle_error_response(errors, status = :unprocessable_entity)
+        render json: { errors: errors }, status: status
       end
 
-      def handle_destroy_response
+      def handle_destroy_response(result)
+        if result.success?
+          head :no_content
+        else
+          handle_error_response(result.errors)
+        end
       end
     end
   end

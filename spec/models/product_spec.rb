@@ -30,6 +30,7 @@ RSpec.describe Product, type: :model do
       product_params = {
         name: 'Laptop z dodatkami',
         price: 4500.0,
+        vat_rate: 0.23,
         product_photos_attributes: [
           { image: file },
           { image: file }

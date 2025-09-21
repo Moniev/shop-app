@@ -33,7 +33,7 @@ module Services
           item.name,
           item.quantity,
           item.unit_of_measure,
-          item.net_price,
+          format('%.2f zł', item.net_price),
           format('%.2f zł', item.total_net_price),
           "#{item.vat_rate.to_i}%",
           format('%.2f zł', item.total_gross_price)

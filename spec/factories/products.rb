@@ -5,6 +5,7 @@ FactoryBot.define do
     sequence(:name) { |n| "Test Product #{n}" }
     price { Faker::Commerce.price(range: 10..1000.0) }
     description { Faker::Lorem.sentence }
+    vat_rate { 0.23 }
   end
 
   factory :product_photo do

@@ -10,6 +10,10 @@ RSpec.describe Services::ProductCreationService, type: :service do
       name: 'New Gadget',
       price: 99.99,
       vat_rate: 0.23,
+      weight_kg: 10,
+      height_cm: 10,
+      width_cm: 10,
+      length_cm: 10,
       description: 'A very useful gadget.',
       product_photo_ids: [1, 2]
     }

@@ -116,7 +116,7 @@ module Api
 
       def available_categories
         @categories = Category.order(:name)
-        bind_data_and_render(result, :show)
+        bind_data_and_render(nil, :show)
       end
 
       def create_category
@@ -204,7 +204,7 @@ module Api
       # @return [ActionController::Parameters] Permitted parameters.
       def product_params
         params.require(:product).permit(
-          :name, :price, :description, :vat_rate,
+          :name, :price, :description, :vat_rate, :weight_kg, :height_cm, :width_cm, :length_cm,
           product_photos_attributes: %i[id _destroy],
           product_photo_ids: []
         )

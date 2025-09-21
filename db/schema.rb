@@ -270,10 +270,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_21_173854) do
     t.decimal "price", precision: 10, scale: 2, null: false
     t.decimal "vat_rate", precision: 5, scale: 2, null: false
     t.string "unit_of_measure", default: "szt.", null: false
-    t.decimal "weight_kg", precision: 10, scale: 2
-    t.decimal "height_cm", precision: 10, scale: 2
-    t.decimal "width_cm", precision: 10, scale: 2
-    t.decimal "length_cm", precision: 10, scale: 2
+    t.decimal "weight_kg", precision: 10, scale: 2, null: false
+    t.decimal "height_cm", precision: 10, scale: 2, null: false
+    t.decimal "width_cm", precision: 10, scale: 2, null: false
+    t.decimal "length_cm", precision: 10, scale: 2, null: false
     t.string "product_type"
     t.text "description"
     t.datetime "created_at", null: false

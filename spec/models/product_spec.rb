@@ -31,6 +31,10 @@ RSpec.describe Product, type: :model do
         name: 'Laptop z dodatkami',
         price: 4500.0,
         vat_rate: 0.23,
+        weight_kg: 10,
+        length_cm: 10.5,
+        width_cm: 10.5,
+        height_cm: 10.5,
         product_photos_attributes: [
           { image: file },
           { image: file }

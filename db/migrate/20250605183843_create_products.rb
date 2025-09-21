@@ -7,11 +7,11 @@ class CreateProducts < ActiveRecord::Migration[8.0]
       t.decimal :vat_rate, precision: 5, scale: 2, null: false
       t.string :unit_of_measure, null: false, default: 'szt.'
 
-      t.decimal :weight_kg, precision: 10, scale: 2
+      t.decimal :weight_kg, precision: 10, scale: 2, null: false
 
-      t.decimal :height_cm, precision: 10, scale: 2
-      t.decimal :width_cm, precision: 10, scale: 2
-      t.decimal :length_cm, precision: 10, scale: 2
+      t.decimal :height_cm, precision: 10, scale: 2, null: false
+      t.decimal :width_cm, precision: 10, scale: 2, null: false
+      t.decimal :length_cm, precision: 10, scale: 2, null: false
 
       t.string :product_type
 

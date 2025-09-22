@@ -9,8 +9,8 @@
 # payment processing, or external API interactions
 module Services
   class UserProfileService
-    extend Concerns::ResultHelpers
-    extend Concerns::Handlers
+    include Concerns::ResultHelpers
+    include Concerns::Handlers
 
     def initialize(user)
       @user = user
@@ -20,7 +20,7 @@ module Services
       if @user.update(params)
         success_result(data: { user: @user }, message: 'profile updated successfully')
       else
-        unprocessable_content_result(@user, 'failed to update user profile')
+        unprocessable_content_result(record: @user, message: 'failed to update user profile')
       end
     end
 
@@ -39,7 +39,7 @@ module Services
       user_detail = @user.user_detail || @user.build_user_detail
 
       if user_detail.update(user_detail_params)
-        success_result(user_detail, 'Personal details updated successfully')
+        success_result(data: { user_detail: user_detail }, message: 'Personal details updated successfully')
       else
         unprocessable_content_result(data: { location: location }, message: 'Failed to update personal data')
       end

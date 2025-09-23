@@ -38,7 +38,7 @@ module Services
       cart_item.price_at_purchase = product.price
       cart_item.save!
 
-      success_result(data: { product: product }, message: 'Product added to cart successfully')
+      success_result(data: nil, message: 'Product added to cart successfully')
     end
 
     # Adds a product to the user's cart.
@@ -47,12 +47,14 @@ module Services
     # @param product_id [String] The ID of the product to add.
     # @param quantity [Integer] The quantity to add.
     # @return [Services::Result] An object indicating success/failure and relevant data/errors.
-    def add_product(product_id, quantity)
+    def add(product_id, quantity)
       with_error_handling do
-        result = check_parameters(product_id, quantity)
-        return result if result.errors.any?
+        ActiveRecord::Base.transaction do
+          result = check_parameters(product_id, quantity)
+          return result if result.errors.any?
 
-        process_cart(result, quantity)
+          return process_cart(result, quantity)
+        end
       end
     end
 
@@ -62,79 +64,56 @@ module Services
     # @param item_id [String] The ID of the cart item to modify.
     # @param quantity_to_remove [Integer, nil] The quantity to remove, or nil to remove all.
     # @return [Services::Result] An object indicating success/failure and relevant data/errors.
-    def remove_product(item_id, quantity_to_remove = nil)
-      item = @user.cart_items.find_by(id: item_id)
-      return product_not_found unless item
+    def remove(item_id, quantity_to_remove = nil)
+      with_error_handling do
+        ActiveRecord::Base.transaction do
+          item = @user.cart_items.find_by(id: item_id)
 
-      quantity_to_remove = quantity_to_remove.to_i if quantity_to_remove.present?
+          return success_result(data: nil, message: 'Product not in cart') if item.nil?
 
-      begin
-        if quantity_to_remove.present? && quantity_to_remove.positive? && quantity_to_remove < item.quantity
-          item.decrement!(:quantity, quantity_to_remove)
-          Services::Result.new(success?: true, message: 'Product quantity updated in cart.', status: :ok)
-        elsif quantity_to_remove.present? && quantity_to_remove.positive? && quantity_to_remove >= item.quantity
-          item.destroy!
-          Services::Result.new(success?: true, message: 'Product removed from cart.', status: :ok)
-        elsif quantity_to_remove.nil?
-          item.destroy!
-          Services::Result.new(success?: true, message: 'Product removed from cart.', status: :ok)
-        else
-          Services::Result.new(
-            success?: false,
-            errors: ['Quantity to remove must be positive or nil to remove all.'],
-            status: :unprocessable_content,
-            message: 'Invalid quantity to remove.'
-          )
+          quantity_to_remove = quantity_to_remove.to_i if quantity_to_remove
+
+          if quantity_to_remove.present? && !quantity_to_remove.positive?
+            return unprocessable_content_with_errors_result(
+              errors: ['Quantity to remove must be a positive number.'], message: 'Invalid quantity'
+            )
+          end
+
+          if quantity_to_remove.nil? || quantity_to_remove >= item.quantity
+            item.destroy!
+            message = 'Product removed from cart'
+          else
+            item.decrement!(:quantity, quantity_to_remove)
+            message = 'Product quantity updated in cart'
+          end
+
+          success_result(data: nil, message: message, status: :ok)
         end
-      rescue StandardError => e
-        Rails.logger.error("Failed to remove product from cart: #{e.message}")
-        Services::Result.new(
-          success?: false,
-          errors: ['An unexpected error occurred while removing the product from the cart.'],
-          status: :internal_server_error,
-          message: 'An unexpected error occurred.'
-        )
       end
     end
 
     # Clears all items from the user's cart.
     # @return [Services::Result] An object indicating success/failure and relevant data/errors.
     def clear
-      @user.cart_items.destroy_all
-      Services::Result.new(success?: true, message: 'Cart cleared successfully.', status: :ok)
-    rescue StandardError => e
-      Rails.logger.error("Failed to clear cart: #{e.message}")
-      Services::Result.new(
-        success?: false,
-        errors: ['An unexpected error occurred while clearing the cart.'],
-        status: :internal_server_error,
-        message: 'An unexpected error occurred.'
-      )
+      with_error_handling do
+        @user.cart_items.destroy_all
+        @user.reload
+        return success_result(data: nil, message: 'Cart cleared successfully', status: :ok)
+      end
     end
 
     # Retrieves the current state of the user's cart.
     #
     # @return [Hash] A hash containing cart items, total amount, and items count.
-    def get_cart_summary
+    def cart_summary
       cart_items = @user.cart_items.includes(:product)
-      total_amount = cart_items.sum { |item| item.quantity * item.price_at_purchase }
+      total_amount = @user.cart_items.sum('quantity * price_at_purchase')
       items_count = cart_items.sum(:quantity)
       {
         cart_items: cart_items,
         total_amount: total_amount,
         items_count: items_count
       }
-    end
-
-    private
-
-    def product_not_found
-      Services::Result.new(
-        success?: false,
-        errors: ['Cart item not found.'],
-        status: :not_found,
-        message: 'Cart item not found.'
-      )
     end
   end
 end

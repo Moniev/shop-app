@@ -16,7 +16,7 @@ RSpec.describe Services::CartService, type: :service do
       it 'adds a new product to the cart' do
         expect(user.cart_items.find_by(product: product)).to be_nil
 
-        result = service.add_product(product.id, 2)
+        result = service.add(product.id, 2)
 
         expect(result.success?).to be true
         expect(user.cart_items.count).to eq(1)
@@ -26,7 +26,7 @@ RSpec.describe Services::CartService, type: :service do
       it 'increments the quantity of an existing product in the cart' do
         create(:cart_item, user: user, product: product, quantity: 1)
 
-        result = service.add_product(product.id, 3)
+        result = service.add(product.id, 3)
 
         expect(result.success?).to be true
         expect(user.cart_items.count).to eq(1)
@@ -36,14 +36,14 @@ RSpec.describe Services::CartService, type: :service do
 
     context 'with invalid data' do
       it 'returns a not_found error for a non-existent product' do
-        result = service.add_product('non-existent-id', 1)
+        result = service.add('non-existent-id', 1)
         expect(result.success?).to be false
         expect(result.status).to eq(:not_found)
       end
 
       it 'returns an unprocessable_content error for zero or negative quantity' do
-        result_zero = service.add_product(product.id, 0)
-        result_negative = service.add_product(product.id, -5)
+        result_zero = service.add(product.id, 0)
+        result_negative = service.add(product.id, -5)
 
         expect(result_zero.success?).to be false
         expect(result_zero.status).to eq(:unprocessable_content)
@@ -59,7 +59,7 @@ RSpec.describe Services::CartService, type: :service do
         exception = ActiveRecord::RecordInvalid.new(invalid_item)
         allow_any_instance_of(Item).to receive(:save!).and_raise(exception)
 
-        result = service.add_product(product.id, 1)
+        result = service.add(product.id, 1)
 
         expect(result.success?).to be false
         expect(result.status).to eq(:unprocessable_content)
@@ -72,27 +72,27 @@ RSpec.describe Services::CartService, type: :service do
     let!(:cart_item) { create(:cart_item, user: user, product: product, quantity: 5) }
 
     it 'decrements the quantity of a product' do
-      result = service.remove_product(cart_item.id, 2)
+      result = service.remove(cart_item.id, 2)
       expect(result.success?).to be true
       expect(cart_item.reload.quantity).to eq(3)
     end
 
     it 'removes the item completely if quantity to remove is greater than current' do
-      expect { service.remove_product(cart_item.id, 6) }.to change(Item, :count).by(-1)
+      expect { service.remove(cart_item.id, 6) }.to change(Item, :count).by(-1)
     end
 
     it 'removes the item completely if quantity to remove equals current' do
-      expect { service.remove_product(cart_item.id, 5) }.to change(Item, :count).by(-1)
+      expect { service.remove(cart_item.id, 5) }.to change(Item, :count).by(-1)
     end
 
     it 'removes the item completely if quantity is not provided (nil)' do
-      expect { service.remove_product(cart_item.id) }.to change(Item, :count).by(-1)
+      expect { service.remove(cart_item.id) }.to change(Item, :count).by(-1)
     end
 
-    it 'returns a not_found error for a non-existent cart item' do
-      result = service.remove_product('non-existent-id')
-      expect(result.success?).to be false
-      expect(result.status).to eq(:not_found)
+    it 'returns a success status for a non-existent cart item' do
+      result = service.remove('non-existent-id')
+      expect(result.success?).to be true
+      expect(result.status).to eq(:ok)
     end
   end
 
@@ -110,7 +110,7 @@ RSpec.describe Services::CartService, type: :service do
   describe '#get_cart_summary' do
     context 'when the cart is empty' do
       it 'returns zero totals' do
-        summary = service.get_cart_summary
+        summary = service.cart_summary
         expect(summary[:cart_items]).to be_empty
         expect(summary[:total_amount]).to eq(0)
         expect(summary[:items_count]).to eq(0)
@@ -123,7 +123,7 @@ RSpec.describe Services::CartService, type: :service do
         create(:cart_item, user: user, product: product, quantity: 2, price_at_purchase: 20.00)
         create(:cart_item, user: user, product: product2, quantity: 3, price_at_purchase: 10.00)
 
-        summary = service.get_cart_summary
+        summary = service.cart_summary
 
         expect(summary[:cart_items].size).to eq(2)
         expect(summary[:items_count]).to eq(5)

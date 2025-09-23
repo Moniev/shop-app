@@ -38,7 +38,7 @@ module Api
       #   the updated cart with an appropriate HTTP status.
       # @see Services::CartService#add_product
       def add
-        result = cart_service.add_product(params[:product_id], add_params[:quantity])
+        result = cart_service.add(params[:product_id], add_params[:quantity])
         bind_data_and_render(result)
       end
 
@@ -57,7 +57,7 @@ module Api
       #   the updated cart with an appropriate HTTP status.
       # @see Services::CartService#remove_product
       def revoke
-        result = cart_service.remove_product(params[:item_id], revoke_params[:quantity_to_remove])
+        result = cart_service.remove(params[:item_id], revoke_params[:quantity_to_remove])
         bind_data_and_render(result)
       end
 
@@ -88,7 +88,7 @@ module Api
           @status = :ok
           @errors = []
         end
-        summary = cart_service.get_cart_summary
+        summary = cart_service.cart_summary
         @cart_items = summary[:cart_items]
         @total_amount = summary[:total_amount]
         @items_count = summary[:items_count]

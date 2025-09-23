@@ -5,12 +5,13 @@ module Services
     extend Concerns::Handlers
     extend Concerns::ResultHelpers
 
-    def self.call(user, refund_params)
+    def self.call(user, order, refund_params)
       with_error_handling do
         return not_found_result(errors: ['User not found'], message: 'User not found') unless user
 
         ActiveRecord::Base.transaction do
           refund = Refund.new(refund_params)
+          refund.order_id = order.id
           refund.save!
         end
 

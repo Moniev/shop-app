@@ -76,20 +76,23 @@ module Services
         net_value = item.quantity * item.price_at_purchase
         vat_value = net_value * (item.product.vat_rate / 100)
         gross_value = net_value + vat_value
-
-        invoice.invoice_items.build(
-          invoice: invoice,
-          product: item.product,
-          name: item.product.name,
-          quantity: item.quantity,
-          net_price: item.price,
-          vat_rate: item.product.vat_rate,
-          unit_of_measure: item.product.unit_of_measure,
-          total_net_price: net_value,
-          total_vat_price: vat_value,
-          total_gross_price: gross_value
-        )
+        build_invoice_item(invoice, item, net_value, vat_value, gross_value)
       end
+    end
+
+    def build_invoice_item(invoice, item, net_value, vat_value, gross_value)
+      invoice.invoice_items.build(
+        invoice: invoice,
+        product: item.product,
+        name: item.product.name,
+        quantity: item.quantity,
+        net_price: item.price,
+        vat_rate: item.product.vat_rate,
+        unit_of_measure: item.product.unit_of_measure,
+        total_net_price: net_value,
+        total_vat_price: vat_value,
+        total_gross_price: gross_value
+      )
     end
   end
 end

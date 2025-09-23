@@ -53,7 +53,7 @@ module Api
       private
 
       def refund_management_service
-        Services::RefundManagementService.new(@refund)
+        @refund_management_service ||= Services::RefundManagementService.new(@refund)
       end
 
       def update_refund_params

@@ -44,6 +44,7 @@ module Api
       # @see Services::UserProfileService#update_profile
       def update
         result = user_profile_service.update_profile(user_params)
+        @user.reload if result.success?
         bind_data_and_render(result, :show)
       end
 
@@ -56,6 +57,7 @@ module Api
       # @see Services::UserProfileService#update_location
       def update_location
         result = user_profile_service.update_location(location_params)
+        @user.reload if result.success?
         bind_data_and_render(result, :show)
       end
 
@@ -81,6 +83,7 @@ module Api
       # @see Services::UserProfileService#update_entrepreneur_details
       def update_entrepreneur_details
         result = user_profile_service.update_entrepreneur_details(entrepreneur_detail_params)
+        @user.reload if result.success?
         bind_data_and_render(result, :show)
       end
 

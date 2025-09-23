@@ -7,11 +7,11 @@ module Services
 
     def self.handle(event)
       with_webhook_error_handling do
-        dispatch_event(event: event)
+        dispatch_event(event)
       end
     end
 
-    def self.dispatch_event(event:)
+    def self.dispatch_event(event)
       case event.type
       when 'payment_intent.succeeded'
         handle_payment_intent_succeeded(event.data.object)

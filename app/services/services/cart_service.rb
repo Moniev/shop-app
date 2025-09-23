@@ -9,8 +9,36 @@
 # payment processing, or external API interactions
 module Services
   class CartService
+    include Concerns::Handlers
+    include Concerns::ResultHelpers
+
     def initialize(user)
       @user = user
+    end
+
+    def check_parameters(product_id, quantity)
+      product = Product.find_by(id: product_id)
+      return not_found_result(errors: ['Product not found'], message: 'Product not found') unless product
+
+      quantity = quantity.to_i
+      return product if quantity.positive?
+
+      unprocessable_content_with_errors_result(errors: ['Product must be greater than 0'],
+                                               message: 'Product quantity mu be greater than 0')
+    end
+
+    def process_cart(product, quantity)
+      cart_item = @user.cart_items.find_or_initialize_by(product: product)
+      if cart_item.new_record?
+        cart_item.quantity = quantity
+      else
+        cart_item.quantity += quantity
+      end
+
+      cart_item.price_at_purchase = product.price
+      cart_item.save!
+
+      success_result(data: { product: product }, message: 'Product added to cart successfully')
     end
 
     # Adds a product to the user's cart.
@@ -20,46 +48,11 @@ module Services
     # @param quantity [Integer] The quantity to add.
     # @return [Services::Result] An object indicating success/failure and relevant data/errors.
     def add_product(product_id, quantity)
-      product = Product.find_by(id: product_id)
-      return product_not_found unless product
+      with_error_handling do
+        result = check_parameters(product_id, quantity)
+        return result if result.errors.any?
 
-      quantity = quantity.to_i
-      unless quantity.positive?
-        return Services::Result.new(
-          success?: false,
-          errors: ['Product quantity must be greater than 0.'],
-          status: :unprocessable_content,
-          message: 'Product quantity must be greater than 0.'
-        )
-      end
-
-      begin
-        cart_item = @user.cart_items.find_or_initialize_by(product: product)
-        if cart_item.new_record?
-          cart_item.quantity = quantity
-        else
-          cart_item.quantity += quantity
-        end
-
-        cart_item.price_at_purchase = product.price
-        cart_item.save!
-
-        Services::Result.new(success?: true, message: 'Product added to cart successfully.', status: :ok)
-      rescue ActiveRecord::RecordInvalid => e
-        Services::Result.new(
-          success?: false,
-          errors: e.record.errors.full_messages,
-          status: :unprocessable_content,
-          message: 'Failed to add product due to validation errors.'
-        )
-      rescue StandardError => e
-        Rails.logger.error("Failed to add product to cart: #{e.message}")
-        Services::Result.new(
-          success?: false,
-          errors: ['An unexpected error occurred while adding the product to the cart.'],
-          status: :internal_server_error,
-          message: 'An unexpected error occurred.'
-        )
+        process_cart(result, quantity)
       end
     end
 

@@ -19,7 +19,6 @@ end
 
 User.find_or_create_by!(mail: ADMIN_MAIL) do |user|
   user.password = ENV.fetch('ADMIN_PASSWORD')
-  user.password_confirmation = ENV.fetch('ADMIN_PASSWORD')
   user.role = :admin
   user.active = true
   user.verified = true

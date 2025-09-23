@@ -9,95 +9,36 @@
 # payment processing, or external API interactions
 module Services
   class CategoryManagementService
+    extend Concerns::Handlers
+    extend Concerns::ResultHelpers
+
     def self.create(category_params)
-      category = Category.new(category_params)
+      with_error_not_destroyed_handling do
+        category = Category.new(category_params)
+        ActiveRecord::Base.transaction do
+          category.save!
+        end
 
-      ActiveRecord::Base.transaction do
-        category.save!
+        success_result(data: { category: category }, message: 'Category created successfully', status: :created)
       end
-
-      Services::Result.new(
-        success?: true,
-        data: { category: category },
-        status: :created,
-        message: 'Category created successfully.'
-      )
-    rescue ActiveRecord::RecordInvalid => e
-      Services::Result.new(
-        success?: false,
-        errors: category.errors.full_messages,
-        status: :unprocessable_entity,
-        message: 'Category creation failed due to validation errors.'
-      )
-    rescue StandardError => e
-      handle_unexpected_error(e, 'Category creation failed unexpectedly')
     end
 
     def self.update(category, category_params)
-      return category_not_found_result unless category
+      return not_found_result(errors: ['Category not found'], message: 'Category not found') unless category
 
-      category.update!(category_params)
-
-      Services::Result.new(
-        success?: true,
-        data: { category: category },
-        status: :ok,
-        message: 'Category updated successfully.'
-      )
-    rescue ActiveRecord::RecordInvalid
-      Services::Result.new(
-        success?: false,
-        errors: category.errors.full_messages,
-        status: :unprocessable_entity,
-        message: 'Category update failed due to validation errors.'
-      )
-    rescue StandardError => e
-      handle_unexpected_error(e, 'Category update failed unexpectedly')
-    end
-
-    def self.destroy(category)
-      return category_not_found_result unless category
-
-      begin
-        ActiveRecord::Base.transaction do
-          category.destroy!
-        end
-        Services::Result.new(
-          success?: true,
-          status: :no_content,
-          message: 'Category deleted successfully.'
-        )
-      rescue ActiveRecord::RecordNotDestroyed
-        Services::Result.new(
-          success?: false,
-          errors: category.errors.full_messages.presence || ['Category could not be deleted.'],
-          status: :unprocessable_entity,
-          message: 'Category deletion failed.'
-        )
-      rescue StandardError => e
-        handle_unexpected_error(e, 'Category deletion failed unexpectedly')
+      with_error_handling do
+        category.update!(category_params)
+        success_result(date: { category: category }, message: 'Category updated successfully')
       end
     end
 
-    private
+    def self.destroy(category)
+      return not_found_result(errors: ['Category not found'], message: 'Category not found') unless category
 
-    def self.category_not_found_result
-      Services::Result.new(
-        success?: false,
-        errors: ['Category not found.'],
-        status: :not_found,
-        message: 'Category not found.'
-      )
-    end
-
-    def self.handle_unexpected_error(error, context_message)
-      Rails.logger.error("#{context_message}: #{error.message}")
-      Services::Result.new(
-        success?: false,
-        errors: ['An unexpected error occurred.'],
-        status: :internal_server_error,
-        message: 'An unexpected error occurred.'
-      )
+      with_error_not_destroyed_handling do
+        category.destroy!
+        destroy_success_result(message: 'Category deleted successfully')
+      end
     end
   end
 end

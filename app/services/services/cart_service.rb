@@ -68,28 +68,31 @@ module Services
       with_error_handling do
         ActiveRecord::Base.transaction do
           item = @user.cart_items.find_by(id: item_id)
-
           return success_result(data: nil, message: 'Product not in cart') if item.nil?
 
-          quantity_to_remove = quantity_to_remove.to_i if quantity_to_remove
+          quantity = quantity_to_remove&.to_i
+          return invalid_quantity_result if quantity.present? && !quantity.positive?
 
-          if quantity_to_remove.present? && !quantity_to_remove.positive?
-            return unprocessable_content_with_errors_result(
-              errors: ['Quantity to remove must be a positive number.'], message: 'Invalid quantity'
-            )
-          end
-
-          if quantity_to_remove.nil? || quantity_to_remove >= item.quantity
-            item.destroy!
-            message = 'Product removed from cart'
-          else
-            item.decrement!(:quantity, quantity_to_remove)
-            message = 'Product quantity updated in cart'
-          end
-
-          success_result(data: nil, message: message, status: :ok)
+          perform_removal(item, quantity)
         end
       end
+    end
+
+    def invalid_quantity_result
+      unprocessable_content_with_errors_result(
+        errors: ['Quantity to remove must be a positive number.'], message: 'Invalid quantity'
+      )
+    end
+
+    def perform_removal(item, quantity)
+      if quantity.nil? || quantity >= item.quantity
+        item.destroy!
+        message = 'Product removed from cart'
+      else
+        item.decrement!(:quantity, quantity)
+        message = 'Product quantity updated in cart'
+      end
+      success_result(data: nil, message: message, status: :ok)
     end
 
     # Clears all items from the user's cart.

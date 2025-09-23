@@ -2,6 +2,6 @@
 
 module Services
   class ConsumerManager
-    include BunnySubscriber::Consumer
+    extend BunnySubscriber::Consumer
   end
 end

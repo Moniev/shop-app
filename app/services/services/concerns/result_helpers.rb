@@ -127,7 +127,7 @@ module Services
         Rails.logger.error("Validation failed: #{exc.message}")
         Services::Result.new(
           success?: false,
-          errors: exc.record.errors.full_messages,
+          errors: exc.record&.errors&.full_messages || [],
           status: :unprocessable_content,
           message: 'Validation failed'
         )

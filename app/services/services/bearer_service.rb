@@ -31,34 +31,34 @@ module Services
     # @return [Services::Result] A Result object indicating success or failure,
     #   containing the token on success or errors on failure.
     def self.encode(payload)
-      payload[:exp] = Time.now.to_i + TOKEN_LIFETIME
-      token = JWT.encode(payload, SECRET_KEY, 'HS256')
+      with_error_handling do
+        payload[:exp] = Time.now.to_i + TOKEN_LIFETIME
+        token = JWT.encode(payload, SECRET_KEY, 'HS256')
 
-      begin
-        redis.with { |conn| conn.set(cache_key(token), 'active', ex: TOKEN_LIFETIME) }
-        Services::Result.new(
-          success?: true,
-          data: { token: token },
-          status: :ok,
-          message: 'Token encoded and cached successfully.'
-        )
-      rescue Redis::CannotConnectError => e
-        Rails.logger.error("Redis error: Failed to cache JWT - #{e.message}. Token issued without Redis cache.")
-        Services::Result.new(
-          success?: true,
-          data: { token: token },
-          status: :ok,
-          message: 'Token encoded, Token active via implicit means.'
-        )
-      rescue StandardError => e
-        Rails.logger.error("Error during JWT encoding: #{e.message}")
-        Services::Result.new(
-          success?: false,
-          errors: ['Failed to encode token.'],
-          status: :internal_server_error,
-          message: 'Token encoding failed.'
-        )
+        cache_token_with_fallback(token)
+
+        success_result(data: { token: token }, message: 'Token encoded and cached successfully')
       end
+    end
+
+    def self.cache_token_with_fallback(token)
+      redis.with { |conn| conn.set(cache_key(token), 'active', ex: TOKEN_LIFETIME) }
+    rescue Redis::CannotConnectError => e
+      Rails.logger.error("Redis error: Failed to cache JWT - #{e.message}. Token issued without Redis cache.")
+    end
+
+    def self.blacklist_via_redis(token)
+      redis.with { |conn| conn.set("jwt_status:#{token}", 'blacklisted', ex: TOKEN_LIFETIME) }
+      success_result(data: nil, message: 'Token blacklisted successfully', status: :ok)
+    end
+
+    def self.blacklist_via_db(token, payload)
+      BlacklistedToken.create!(
+        token: token,
+        owner_id: payload[:user_id],
+        expires_at: Time.at(payload[:exp])
+      )
+      success_result(data: nil, message: 'Token blacklisted successfully', status: :ok)
     end
 
     # Decodes a JWT token. Checks if the token is blacklisted before decoding.
@@ -68,15 +68,10 @@ module Services
     #   or errors if the token is invalid, expired, or blacklisted.
     def self.decode(token)
       if blacklisted?(token).success? && blacklisted?(token).data[:is_blacklisted]
-        return Services::Result.new(
-          success?: false,
-          errors: ['Token has been blacklisted.'],
-          status: :unauthorized,
-          message: 'Token blacklisted.'
-        )
+        return unauthorized_result(errors: ['Token has been blacklisted'], message: 'Token blacklisted.')
       end
 
-      _decode_payload(token)
+      decode_payload(token)
     end
 
     # Blacklists a JWT token.
@@ -84,57 +79,28 @@ module Services
     # @param token [String] The JWT token to blacklist.
     # @return [Services::Result] A Result object indicating success or failure of blacklisting.
     def self.blacklist!(token)
-      decoded_result = _decode_payload(token)
+      decoded_result = decode_payload(token)
       unless decoded_result.success?
-        return Services::Result.new(
-          success?: false,
-          errors: ['Invalid token for blacklisting.'],
-          status: :unprocessable_content,
-          message: 'Token could not be decoded for blacklisting.'
+        return unprocessable_content_with_errors_result(
+          errors: ['Invalid token for blacklisting'],
+          message: 'Token could not be decoded for blacklisting'
         )
       end
-      decoded_payload = decoded_result.data[:payload]
-      token_expires_at = Time.at(decoded_payload[:exp])
 
-      begin
-        redis_key = "jwt_status:#{token}"
-        redis.with { |conn| conn.set(redis_key, 'blacklisted', ex: TOKEN_LIFETIME) }
-        Services::Result.new(
-          success?: true,
-          status: :ok,
-          message: 'Token blacklisted successfully.'
-        )
-      rescue Redis::CannotConnectError => e
-        Rails.logger.error("Redis error: Failed to blacklist JWT - #{e.message}. Falling back to DB.")
-        begin
-          BlacklistedToken.create!(
-            token: token,
-            owner_id: decoded_payload[:user_id],
-            expires_at: token_expires_at
-          )
-          Services::Result.new(
-            success?: true,
-            status: :ok,
-            message: 'Token blacklisted successfully via database fallback.'
-          )
-        rescue ActiveRecord::RecordInvalid => e_db
-          Rails.logger.error("DB error: Failed to blacklist JWT - #{e_db.message}")
-          Services::Result.new(
-            success?: false,
-            errors: ["Failed to blacklist token in DB: #{e_db.message}"],
-            status: :internal_server_error,
-            message: 'Blacklisting failed in fallback.'
-          )
-        end
-      rescue StandardError => e
-        Rails.logger.error("Error during JWT blacklisting: #{e.message}")
-        Services::Result.new(
-          success?: false,
-          errors: ['Failed to blacklist token due to unexpected error.'],
-          status: :internal_server_error,
-          message: 'Blacklisting failed.'
-        )
+      with_error_handling do
+        with_redis_fallback(lambda {
+          blacklist_via_db(token, decoded_result.data[:payload])
+        }) { blacklist_via_redis(token) }
       end
+    end
+
+    def self.check_redis_blacklist(token)
+      status = redis.with { |conn| conn.get("jwt_status:#{token}") }
+      status == 'blacklisted'
+    end
+
+    def self.check_db_blacklist(token)
+      BlacklistedToken.exists?(token: token)
     end
 
     # Checks if a token is blacklisted.
@@ -143,34 +109,20 @@ module Services
     # @return [Services::Result] A Result object indicating if the token is blacklisted
     #   and the status of the check (e.g., :ok, :internal_server_error).
     def self.blacklisted?(token)
-      redis_key = "jwt_status:#{token}"
-      begin
-        status = redis.with { |conn| conn.get(redis_key) }
-        is_blacklisted = (status == 'blacklisted')
-        Services::Result.new(
-          success?: true,
-          data: { is_blacklisted: is_blacklisted },
-          status: :ok,
-          message: is_blacklisted ? 'Token found in blacklist' : 'Token not found in blacklist cache.'
-        )
-      rescue Redis::CannotConnectError => e
-        Rails.logger.error("Redis error: Failed to check JWT blacklist - #{e.message}. Falling back to DB.")
-        is_blacklisted_in_db = BlacklistedToken.exists?(token: token)
-        Services::Result.new(
-          success?: true,
-          data: { is_blacklisted: is_blacklisted_in_db },
-          status: :ok,
-          message: is_blacklisted_in_db ? 'Token found in database blacklist.' : 'Token not found in database blacklist.'
-        )
-      rescue StandardError => e
-        Rails.logger.error("Error checking JWT blacklist: #{e.message}")
-        Services::Result.new(
-          success?: false,
-          errors: ['Failed to check blacklist status.'],
-          status: :internal_server_error,
-          message: 'Blacklist check failed.'
-        )
+      is_blacklisted = begin
+        check_redis_blacklist(token)
+      rescue Redis::CannotConnectError
+        check_db_blacklist(token)
       end
+
+      success_result(data: { is_blacklisted: is_blacklisted }, message: build_message(is_blacklisted))
+    rescue StandardError
+      internal_server_error_result(errors: ['Failed to check blacklist  status.'],
+                                   message: 'Blacklist check failed')
+    end
+
+    def self.build_message(is_blacklisted)
+      is_blacklisted ? 'Token is blacklisted' : 'Token is not blacklisted'
     end
 
     def self.cache_key(token)
@@ -182,39 +134,12 @@ module Services
     # @param token [String] The JWT token to decode.
     # @return [Services::Result] A Result object containing the decoded payload on success,
     #   or errors if the token is invalid or expired.
-    def self._decode_payload(token)
-      body = JWT.decode(token, SECRET_KEY, true, { algorithm: 'HS256' })[0]
-      payload = HashWithIndifferentAccess.new(body)
-      Services::Result.new(
-        success?: true,
-        data: { payload: payload },
-        status: :ok,
-        message: 'Token decoded successfully.'
-      )
-    rescue JWT::ExpiredSignature => e
-      Rails.logger.warn("JWT Decode Error: Expired Signature - #{e.message}")
-      Services::Result.new(
-        success?: false,
-        errors: ['Token has expired.'],
-        status: :unauthorized,
-        message: 'Token expired.'
-      )
-    rescue JWT::DecodeError => e
-      Rails.logger.warn("JWT Decode Error: Invalid Token - #{e.message}")
-      Services::Result.new(
-        success?: false,
-        errors: ['Invalid token.'],
-        status: :unauthorized,
-        message: 'Invalid token.'
-      )
-    rescue StandardError => e
-      Rails.logger.error("Unexpected error during JWT payload decoding: #{e.message}")
-      Services::Result.new(
-        success?: false,
-        errors: ['An unexpected error occurred during token decoding.'],
-        status: :internal_server_error,
-        message: 'Decoding failed.'
-      )
+    def self.decode_payload(token)
+      with_jwt_error_handling do
+        body = JWT.decode(token, SECRET_KEY, true, { algorithm: 'HS256' })[0]
+        payload = HashWithIndifferentAccess.new(body)
+        success_result(data: { payload: payload }, message: 'Token decoded successfully', status: :ok)
+      end
     end
   end
 end

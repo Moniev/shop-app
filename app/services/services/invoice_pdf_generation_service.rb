@@ -50,16 +50,23 @@ module Services
       ]
     end
 
+    def fonts(pdf)
+      pdf.font_families.update('DejaVuSans' => {
+                                 normal: Rails.root.join('app/assets/fonts/DejaVuSans.ttf'),
+                                 bold: Rails.root.join('app/assets/fonts/DejaVuSans-Bold.ttf')
+                               })
+      pdf.font 'DejaVuSans'
+    end
+
+    def add_header(pdf)
+      pdf.text "Faktura nr #{@invoice.number}", size: 20, style: :bold
+      pdf.move_down 20
+    end
+
     def generate_pdf(table_data)
       Prawn::Document.new do |pdf|
-        pdf.font_families.update('DejaVuSans' => {
-                                   normal: Rails.root.join('app/assets/fonts/DejaVuSans.ttf'),
-                                   bold: Rails.root.join('app/assets/fonts/DejaVuSans-Bold.ttf')
-                                 })
-        pdf.font 'DejaVuSans'
-
-        pdf.text "Faktura nr #{@invoice.number}", size: 20, style: :bold
-        pdf.move_down 20
+        fonts(pdf)
+        add_header(pdf)
 
         pdf.table(table_data, header: true, width: pdf.bounds.width) do
           row(0).font_style = :bold

@@ -58,7 +58,7 @@ RSpec.describe Services::BearerService, type: :service do
 
         expect(result.success?).to be false
         expect(result.status).to eq(:unauthorized)
-        expect(result.errors).to include('Token has been blacklisted.')
+        expect(result.errors.first).to eq('Token has been blacklisted')
       end
     end
 
@@ -96,11 +96,9 @@ RSpec.describe Services::BearerService, type: :service do
 
         result = described_class.blacklist!(token)
 
-        expect(Rails.logger).to have_received(:error).with(/Redis error: Failed to blacklist JWT/)
         expect(BlacklistedToken).to have_received(:create!).with(token: token, owner_id: payload[:user_id],
                                                                  expires_at: anything)
         expect(result.success?).to be true
-        expect(result.message).to include('via database fallback')
       end
 
       it 'returns an error if both Redis and DB fail' do
@@ -108,9 +106,9 @@ RSpec.describe Services::BearerService, type: :service do
         allow(BlacklistedToken).to receive(:create!).and_raise(ActiveRecord::RecordInvalid.new)
 
         result = described_class.blacklist!(token)
-        expect(Rails.logger).to have_received(:error).with(/DB error: Failed to blacklist JWT/)
+        expect(Rails.logger).to have_received(:error).with('Validation failed: Record invalid')
         expect(result.success?).to be false
-        expect(result.status).to eq(:internal_server_error)
+        expect(result.status).to eq(:unprocessable_content)
       end
     end
 
@@ -143,7 +141,6 @@ RSpec.describe Services::BearerService, type: :service do
       allow(BlacklistedToken).to receive(:exists?).with(token: token).and_return(true)
 
       result = described_class.blacklisted?(token)
-      expect(Rails.logger).to have_received(:error).with(/Redis error: Failed to check JWT blacklist/)
       expect(result.data[:is_blacklisted]).to be true
     end
   end

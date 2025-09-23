@@ -3,10 +3,29 @@
 module Services
   module Concerns
     module Handlers
+      extend ResultHelpers
+
+      def with_jwt_error_handling
+        yield
+      rescue JWT::ExpiredSignature
+        unauthorized_result(errors: ['Token has expired.'], message: 'Token expired')
+      rescue JWT::DecodeError
+        unauthorized_result(errors: ['Invalid token.'], message: 'Invalid token')
+      rescue StandardError
+        internal_server_error_result(message: 'Decoding failed.',
+                                     errors: ['An unexpected error occurred during token decoding'])
+      end
+
       def with_redis_error_handling
         yield
       rescue Redis::CannotConnectError => e
         Rails.logger.error("Redis error falling back to DB: #{e.message}")
+      end
+
+      def with_additional_redis_error_handling
+        yield
+      rescue StandardError
+        internal_server_error_result(message: 'Failed to encode token.', errors: ['Token encoding failed.'])
       end
 
       def with_redis_fallback(fallback)
